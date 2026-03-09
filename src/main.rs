@@ -9,6 +9,9 @@ use winit::{
     window::{Window, WindowId},
 };
 
+mod world;
+//use world::*;
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct Uniforms
