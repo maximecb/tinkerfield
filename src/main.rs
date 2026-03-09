@@ -11,13 +11,15 @@ use winit::{
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct Uniforms {
+struct Uniforms
+{
     time: f32,
     aspect_ratio: f32,
     _padding: [f32; 2],
 }
 
-struct State {
+struct State
+{
     surface: wgpu::Surface<'static>,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -28,8 +30,10 @@ struct State {
     window: Arc<Window>,
 }
 
-impl State {
-    async fn new(window: Arc<Window>) -> Self {
+impl State
+{
+    async fn new(window: Arc<Window>) -> Self
+    {
         let instance = wgpu::Instance::default();
         let surface = instance.create_surface(Arc::clone(&window)).unwrap();
 
@@ -155,7 +159,8 @@ impl State {
         }
     }
 
-    fn update(&mut self) {
+    fn update(&mut self)
+    {
         let uniforms = Uniforms {
             time: self.start_time.elapsed().as_secs_f32(),
             aspect_ratio: 800.0 / 600.0,
@@ -164,34 +169,39 @@ impl State {
         self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
     }
 
-    fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+    fn render(&mut self) -> Result<(), wgpu::SurfaceError>
+    {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
 
-        {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                        store: wgpu::StoreOp::Store,
-                    },
-                    depth_slice: None,
-                })],
-                depth_stencil_attachment: None,
-                occlusion_query_set: None,
-                timestamp_writes: None,
-            });
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 0.1,
+                        g: 0.2,
+                        b: 0.3,
+                        a: 1.0,
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+                depth_slice: None,
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
 
-            render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-            render_pass.draw(0..3, 0..1);
-        }
+        render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        render_pass.draw(0..3, 0..1);
+        drop(render_pass);
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
@@ -200,12 +210,15 @@ impl State {
     }
 }
 
-struct App {
+struct App
+{
     state: Option<State>,
 }
 
-impl ApplicationHandler for App {
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+impl ApplicationHandler for App
+{
+    fn resumed(&mut self, event_loop: &ActiveEventLoop)
+    {
         let window = Arc::new(
             event_loop
                 .create_window(
@@ -219,7 +232,8 @@ impl ApplicationHandler for App {
         self.state = Some(state);
     }
 
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent)
+    {
         let state = self.state.as_mut().unwrap();
         match event {
             WindowEvent::CloseRequested
@@ -245,7 +259,8 @@ impl ApplicationHandler for App {
     }
 }
 
-fn main() {
+fn main()
+{
     let event_loop = EventLoop::new().unwrap();
     let mut app = App { state: None };
     event_loop.run_app(&mut app).unwrap();
