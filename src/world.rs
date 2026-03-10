@@ -230,11 +230,11 @@ impl World
     }
 
     /// Add a brush to the world grid
-    pub fn add_brush(&mut self, brush: Brush)
+    pub fn add_brush(&mut self, brush: Brush) -> u16
     {
         let index = self.brushes.len() as u16;
         if index as usize >= MAX_BRUSHES {
-            return;
+            return u16::MAX;
         }
         self.brushes.push(brush);
 
@@ -260,5 +260,7 @@ impl World
                 }
             }
         }
+
+        index
     }
 }
