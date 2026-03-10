@@ -1,16 +1,16 @@
 #![allow(dead_code)]
 
-// Brush kinds
+/// Brush kinds
 pub const KIND_BOX: u32 = 0;
 pub const KIND_CYLINDER: u32 = 1;
 pub const KIND_SPHERE: u32 = 2;
 pub const KIND_CONE: u32 = 3;
 
-// CSG operations
+/// CSG operations
 pub const OP_ADD: u32 = 0;
 pub const OP_SUB: u32 = 1;
 
-// Grid cell slot empty
+/// Grid cell slot empty
 pub const SLOT_EMPTY: u16 = u16::MAX;
 
 #[repr(C)]
@@ -32,9 +32,10 @@ pub struct Player
     pub _padding: f32,
 }
 
+/// Maximum number of brushes in our game world
 pub const MAX_BRUSHES: usize = u16::MAX as usize;
 
-// 256 x 256 x 64 x (32 * 2) = 256MB
+/// 256 x 256 x 64 x (32 * 2) = 256MB
 pub const GRID_W: usize = 256;
 pub const GRID_D: usize = 256;
 pub const GRID_H: usize = 64;
@@ -45,9 +46,9 @@ pub struct World
 {
     brushes: Vec<Brush>,
 
-    // The grid is a 3D array of cells such that each cell
-    // is 1x1x1 unit (one meter) in size
-    // Each cell contains a list of up to 32 object indices (u16)
+    /// The grid is a 3D array of cells such that each cell
+    /// is 1x1x1 unit (one meter) in size
+    /// Each cell contains a list of up to 32 brush indices (u16)
     grid: Box<[u16; GRID_COUNT]>,
 
     player: Player,
