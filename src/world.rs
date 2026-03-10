@@ -173,17 +173,15 @@ impl GPUWorld
 
 pub struct World
 {
-    /// List of brushes in the world
     brushes: Vec<Brush>,
 
     /// The grid is a 3D array of cells such that each cell
     /// is 1x1x1 unit (one meter) in size
     /// Each cell contains a list of up to 32 brush indices (u16)
-    grid: Box<[u16; GRID_COUNT]>,
+    grid: Box<[u16]>,
 
-    player: Player,
+    pub player: Player,
 
-    /// GPU resources for the world
     pub gpu: GPUWorld,
 }
 
@@ -193,7 +191,7 @@ impl World
     {
         let mut world = Self {
             brushes: Vec::with_capacity(1024),
-            grid: Box::new([SLOT_EMPTY; GRID_COUNT]),
+            grid: vec![SLOT_EMPTY; GRID_COUNT].into_boxed_slice(),
             player: Player {
                 position: [128.0, 5.0, 128.0],
                 _padding: 0.0,
