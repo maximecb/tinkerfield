@@ -1,5 +1,8 @@
 #![allow(dead_code)]
 
+use std::time::Instant;
+use crate::math::*;
+
 /// Brush kinds
 pub const KIND_BOX: u32 = 0;
 pub const KIND_CYLINDER: u32 = 1;
@@ -13,15 +16,23 @@ pub const OP_SUB: u32 = 1;
 /// Grid cell slot empty
 pub const SLOT_EMPTY: u16 = u16::MAX;
 
+// Total size: 64 bytes
+// Every vec3/vec4 is 16-byte aligned
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Brush
 {
+    pub pos: [f32; 3],
     pub kind: u32,
+
+    pub scale: [f32; 3],
     pub material: u32,
+
+    pub inv_scale: [f32; 3],
     pub op: u32,
-    pub _padding: u32,
-    pub transform: [[f32; 4]; 4],
+
+    // Quaternion (x, y, z, w)
+    pub rot: [f32; 4],
 }
 
 impl Brush
@@ -36,13 +47,10 @@ impl Brush
             let py_unit = if (i & 2) == 0 { -0.5 } else { 0.5 };
             let pz_unit = if (i & 4) == 0 { -0.5 } else { 0.5 };
 
-            // Matrix-vector multiplication (column-major: m[col][row])
-            let x = self.transform[0][0] * px_unit + self.transform[1][0] * py_unit + self.transform[2][0] * pz_unit + self.transform[3][0];
-            let y = self.transform[0][1] * px_unit + self.transform[1][1] * py_unit + self.transform[2][1] * pz_unit + self.transform[3][1];
-            let z = self.transform[0][2] * px_unit + self.transform[1][2] * py_unit + self.transform[2][2] * pz_unit + self.transform[3][2];
-            let w = self.transform[0][3] * px_unit + self.transform[1][3] * py_unit + self.transform[2][3] * pz_unit + self.transform[3][3];
-
-            let p = [x / w, y / w, z / w];
+            // Apply PQS transform: world = pos + rot * (scale * unit)
+            let p_local = vec3_mul(self.scale, [px_unit, py_unit, pz_unit]);
+            let p_rotated = quat_rotate(self.rot, p_local);
+            let p = vec3_add(self.pos, p_rotated);
 
             for j in 0..3 {
                 if p[j] < min[j] { min[j] = p[j]; }
@@ -201,16 +209,13 @@ impl World
 
         // Add a default floor brush
         world.add_brush(Brush {
+            pos: [128.0, 0.0, 128.0],
             kind: KIND_BOX,
+            scale: [200.0, 0.2, 200.0],
             material: 0,
+            inv_scale: [1.0 / 200.0, 1.0 / 0.2, 1.0 / 200.0],
             op: OP_ADD,
-            _padding: 0,
-            transform: [
-                [200.0, 0.0, 0.0, 0.0],
-                [0.0, 0.2, 0.0, 0.0],
-                [0.0, 0.0, 200.0, 0.0],
-                [128.0, 0.0, 128.0, 1.0],
-            ],
+            rot: [0.0, 0.0, 0.0, 1.0], // Identity rotation (x, y, z, w)
         });
 
         world
@@ -223,10 +228,13 @@ impl World
 
     pub fn upload_world(&self, queue: &wgpu::Queue)
     {
+        let start = Instant::now();
         if !self.brushes.is_empty() {
             queue.write_buffer(&self.gpu.brush_buffer, 0, bytemuck::cast_slice(&self.brushes));
         }
         queue.write_buffer(&self.gpu.grid_buffer, 0, bytemuck::cast_slice(self.grid.as_ref()));
+        let elapsed = start.elapsed();
+        println!("World upload time: {:.2}ms", elapsed.as_secs_f32() * 1000.0);
     }
 
     /// Add a brush to the world grid
