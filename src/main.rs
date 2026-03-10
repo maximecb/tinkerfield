@@ -123,6 +123,8 @@ impl State
         });
 
         let world = world::World::new(&device);
+        world.upload_world(&queue);
+        world.upload_player(&queue);
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -178,6 +180,7 @@ impl State
             _padding: [0.0; 2],
         };
         self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+        self.world.upload_player(&self.queue);
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError>

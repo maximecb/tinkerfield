@@ -218,13 +218,17 @@ impl World
         world
     }
 
-    pub fn upload(&self, queue: &wgpu::Queue)
+    pub fn upload_player(&self, queue: &wgpu::Queue)
+    {
+        queue.write_buffer(&self.gpu.player_buffer, 0, bytemuck::bytes_of(&self.player));
+    }
+
+    pub fn upload_world(&self, queue: &wgpu::Queue)
     {
         if !self.brushes.is_empty() {
             queue.write_buffer(&self.gpu.brush_buffer, 0, bytemuck::cast_slice(&self.brushes));
         }
         queue.write_buffer(&self.gpu.grid_buffer, 0, bytemuck::cast_slice(self.grid.as_ref()));
-        queue.write_buffer(&self.gpu.player_buffer, 0, bytemuck::bytes_of(&self.player));
     }
 
     /// Add a brush to the world grid
