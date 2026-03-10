@@ -1,16 +1,21 @@
 #![allow(dead_code)]
 
-pub const KIND_NONE: u32 = 0;
-pub const KIND_BOX: u32 = 1;
-pub const KIND_CYLINDER: u32 = 2;
-pub const KIND_SPHERE: u32 = 3;
+// Brush kinds
+pub const KIND_BOX: u32 = 0;
+pub const KIND_CYLINDER: u32 = 1;
+pub const KIND_SPHERE: u32 = 2;
+pub const KIND_CONE: u32 = 3;
 
-pub const OP_SUB: u32 = 0;
-pub const OP_ADD: u32 = 1;
+// CSG operations
+pub const OP_ADD: u32 = 0;
+pub const OP_SUB: u32 = 1;
+
+// Grid cell slot empty
+pub const SLOT_EMPTY: u16 = u16::MAX;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Object
+pub struct Brush
 {
     pub kind: u32,
     pub material: u32,
@@ -27,19 +32,24 @@ pub struct Player
     pub _padding: f32,
 }
 
-pub const MAX_OBJECTS: usize = u16::MAX as usize;
+pub const MAX_BRUSHES: usize = u16::MAX as usize;
 
-// 256 x 256 x 64 x (2 * 32) = 256MB
+// 256 x 256 x 64 x (32 * 2) = 256MB
 pub const GRID_W: usize = 256;
 pub const GRID_D: usize = 256;
 pub const GRID_H: usize = 64;
-pub const GRID_E: usize = 32;
-pub const GRID_COUNT: usize = GRID_W * GRID_D * GRID_H * GRID_E;
+pub const GRID_C: usize = 32;
+pub const GRID_COUNT: usize = GRID_W * GRID_D * GRID_H * GRID_C;
 
 pub struct World
 {
-    objects: Vec<Object>,
+    brushes: Vec<Brush>,
+
+    // The grid is a 3D array of cells such that each cell
+    // is 1x1x1 unit (one meter) in size
+    // Each cell contains a list of up to 32 object indices (u16)
     grid: Box<[u16; GRID_COUNT]>,
+
     player: Player,
 }
 
@@ -48,7 +58,7 @@ impl World
     pub fn new() -> Self
     {
         Self {
-            objects: vec![Object {
+            brushes: vec![Brush {
                 kind: KIND_BOX,
                 material: 0,
                 op: OP_ADD,
@@ -59,7 +69,7 @@ impl World
                     [0.0, 0.0, 40.0, 0.0],
                     [0.0, 0.0, 0.0, 1.0],
                 ],
-            }; MAX_OBJECTS],
+            }; MAX_BRUSHES],
 
             grid: Box::new([0; GRID_COUNT]),
 
