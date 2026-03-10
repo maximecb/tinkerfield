@@ -54,7 +54,11 @@ impl State
                 &wgpu::DeviceDescriptor {
                     label: None,
                     required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::default(),
+                    required_limits: wgpu::Limits {
+                        max_storage_buffer_binding_size: 256 * 1024 * 1024,
+                        max_buffer_size: 256 * 1024 * 1024,
+                        ..wgpu::Limits::default()
+                    },
                     memory_hints: wgpu::MemoryHints::default(),
                     ..Default::default()
                 },
