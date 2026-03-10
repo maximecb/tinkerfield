@@ -238,6 +238,7 @@ impl ApplicationHandler for App
             event_loop
                 .create_window(
                     Window::default_attributes()
+                        .with_title("TinkerField")
                         .with_inner_size(LogicalSize::new(800.0, 600.0))
                         .with_resizable(false),
                 )
