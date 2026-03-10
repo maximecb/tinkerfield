@@ -31,6 +31,7 @@ struct State
     uniform_bind_group: wgpu::BindGroup,
     start_time: Instant,
     window: Arc<Window>,
+    world: world::World,
 }
 
 impl State
@@ -121,10 +122,12 @@ impl State
             label: Some("uniform_bind_group"),
         });
 
+        let world = world::World::new(&device);
+
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&uniform_bind_group_layout],
+                bind_group_layouts: &[&uniform_bind_group_layout, &world.gpu.bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -163,6 +166,7 @@ impl State
             uniform_bind_group,
             start_time: Instant::now(),
             window,
+            world,
         }
     }
 
@@ -207,6 +211,7 @@ impl State
 
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.world.gpu.bind_group, &[]);
         render_pass.draw(0..3, 0..1);
         drop(render_pass);
 
