@@ -66,8 +66,20 @@ impl Brush
 #[derive(Default, Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Player
 {
-    pub position: [f32; 3],
-    pub _padding: f32,
+    // Camera position
+    position: [f32; 3],
+    _pad0: f32,
+
+    // Eye direction
+    direction: [f32; 3],
+    _pad1: f32,
+
+    // Yaw and pitch angles in degrees
+    yaw: f32,
+    pitch: f32,
+
+    // Padding to reach 48 bytes (multiple of 16)
+    _pad2: [f32; 2],
 }
 
 /// Maximum number of brushes in our game world
@@ -202,7 +214,12 @@ impl World
             grid: vec![SLOT_EMPTY; GRID_COUNT].into_boxed_slice(),
             player: Player {
                 position: [128.0, 5.0, 128.0],
-                _padding: 0.0,
+                _pad0: 0.0,
+                direction: [0.0, 0.0, 1.0],
+                _pad1: 0.0,
+                yaw: 0.0,
+                pitch: 0.0,
+                _pad2: [0.0; 2],
             },
             gpu: GPUWorld::new(device),
         };
