@@ -17,7 +17,7 @@ pub const OP_SUB: u32 = 1;
 pub const SLOT_EMPTY: u16 = u16::MAX;
 
 // Total size: 64 bytes
-// Every vec3/vec4 is 16-byte aligned
+// Every vec3/vec4 field is 16-byte aligned
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Brush
@@ -28,11 +28,11 @@ pub struct Brush
     pub scale: [f32; 3],
     pub material: u32,
 
-    pub inv_scale: [f32; 3],
-    pub op: u32,
-
     // Quaternion (x, y, z, w)
     pub rot: [f32; 4],
+
+    pub op: u32,
+    pub _pad: [u32; 3],
 }
 
 impl Brush
@@ -213,9 +213,9 @@ impl World
             kind: KIND_BOX,
             scale: [200.0, 0.2, 200.0],
             material: 0,
-            inv_scale: [1.0 / 200.0, 1.0 / 0.2, 1.0 / 200.0],
-            op: OP_ADD,
             rot: [0.0, 0.0, 0.0, 1.0], // Identity rotation (x, y, z, w)
+            op: OP_ADD,
+            _pad: [0; 3],
         });
 
         world
