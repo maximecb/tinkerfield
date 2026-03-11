@@ -3,10 +3,10 @@ use std::time::Instant;
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
-    event::{KeyEvent, WindowEvent},
+    event::{DeviceEvent, DeviceId, KeyEvent, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
-    window::{Window, WindowId},
+    window::{CursorGrabMode, Window, WindowId},
 };
 
 mod world;
@@ -228,6 +228,7 @@ impl State
 struct App
 {
     state: Option<State>,
+    cursor_initialized: bool,
 }
 
 impl ApplicationHandler for App
@@ -244,7 +245,14 @@ impl ApplicationHandler for App
                 )
                 .unwrap(),
         );
+
         let state = pollster::block_on(State::new(Arc::clone(&window)));
+
+        // Try to grab the cursor after everything is initialized
+        let _ = window.set_cursor_grab(CursorGrabMode::Locked)
+            .or_else(|_| window.set_cursor_grab(CursorGrabMode::Confined));
+        window.set_cursor_visible(false);
+
         self.state = Some(state);
     }
 
@@ -262,6 +270,13 @@ impl ApplicationHandler for App
                 ..
             } => event_loop.exit(),
             WindowEvent::RedrawRequested => {
+                if !self.cursor_initialized {
+                    let _ = state.window.set_cursor_grab(CursorGrabMode::Locked)
+                        .or_else(|_| state.window.set_cursor_grab(CursorGrabMode::Confined));
+                    state.window.set_cursor_visible(false);
+                    self.cursor_initialized = true;
+                }
+
                 state.update();
                 match state.render() {
                     Ok(_) => {}
@@ -273,11 +288,24 @@ impl ApplicationHandler for App
             _ => {}
         }
     }
+
+    fn device_event(&mut self, _event_loop: &ActiveEventLoop, _device_id: DeviceId, event: DeviceEvent)
+    {
+        if let Some(state) = self.state.as_mut() {
+            if let DeviceEvent::MouseMotion { delta } = event {
+                let sensitivity = 0.1;
+                state.world.rotate_player(
+                    delta.0 as f32 * sensitivity,
+                    -delta.1 as f32 * sensitivity,
+                );
+            }
+        }
+    }
 }
 
 fn main()
 {
     let event_loop = EventLoop::new().unwrap();
-    let mut app = App { state: None };
+    let mut app = App { state: None, cursor_initialized: false };
     event_loop.run_app(&mut app).unwrap();
 }

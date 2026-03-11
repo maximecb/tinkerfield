@@ -82,6 +82,21 @@ pub struct Player
     _pad2: [f32; 2],
 }
 
+impl Player
+{
+    pub fn update_direction(&mut self)
+    {
+        let yaw_rad = self.yaw.to_radians();
+        let pitch_rad = self.pitch.to_radians();
+
+        self.direction = [
+            yaw_rad.sin() * pitch_rad.cos(),
+            pitch_rad.sin(),
+            yaw_rad.cos() * pitch_rad.cos(),
+        ];
+    }
+}
+
 /// Maximum number of brushes in our game world
 pub const MAX_BRUSHES: usize = u16::MAX as usize;
 
@@ -213,7 +228,7 @@ impl World
             brushes: Vec::with_capacity(1024),
             grid: vec![SLOT_EMPTY; GRID_COUNT].into_boxed_slice(),
             player: Player {
-                position: [128.0, 5.0, 128.0],
+                position: [128.0, 1.8, 128.0],
                 _pad0: 0.0,
                 direction: [0.0, 0.0, 1.0],
                 _pad1: 0.0,
@@ -224,11 +239,13 @@ impl World
             gpu: GPUWorld::new(device),
         };
 
+        world.player.update_direction();
+
         // Add a default floor brush
         world.add_brush(Brush {
             pos: [128.0, 0.0, 128.0],
             kind: KIND_BOX,
-            scale: [200.0, 0.2, 200.0],
+            scale: [40.0, 0.2, 40.0],
             material: 0,
             rot: [0.0, 0.0, 0.0, 1.0], // Identity rotation (x, y, z, w)
             op: OP_ADD,
@@ -238,20 +255,12 @@ impl World
         world
     }
 
-    pub fn upload_player(&self, queue: &wgpu::Queue)
+    /// Rotate the player's view
+    pub fn rotate_player(&mut self, yaw: f32, pitch: f32)
     {
-        queue.write_buffer(&self.gpu.player_buffer, 0, bytemuck::bytes_of(&self.player));
-    }
-
-    pub fn upload_world(&self, queue: &wgpu::Queue)
-    {
-        let start = Instant::now();
-        if !self.brushes.is_empty() {
-            queue.write_buffer(&self.gpu.brush_buffer, 0, bytemuck::cast_slice(&self.brushes));
-        }
-        queue.write_buffer(&self.gpu.grid_buffer, 0, bytemuck::cast_slice(self.grid.as_ref()));
-        let elapsed = start.elapsed();
-        println!("World upload time: {:.2}ms", elapsed.as_secs_f32() * 1000.0);
+        self.player.yaw += yaw;
+        self.player.pitch = (self.player.pitch + pitch).clamp(-89.0, 89.0);
+        self.player.update_direction();
     }
 
     /// Add a brush to the world grid
@@ -287,5 +296,21 @@ impl World
         }
 
         index
+    }
+
+    pub fn upload_player(&self, queue: &wgpu::Queue)
+    {
+        queue.write_buffer(&self.gpu.player_buffer, 0, bytemuck::bytes_of(&self.player));
+    }
+
+    pub fn upload_world(&self, queue: &wgpu::Queue)
+    {
+        let start = Instant::now();
+        if !self.brushes.is_empty() {
+            queue.write_buffer(&self.gpu.brush_buffer, 0, bytemuck::cast_slice(&self.brushes));
+        }
+        queue.write_buffer(&self.gpu.grid_buffer, 0, bytemuck::cast_slice(self.grid.as_ref()));
+        let elapsed = start.elapsed();
+        println!("World upload time: {:.2}ms", elapsed.as_secs_f32() * 1000.0);
     }
 }
