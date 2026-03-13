@@ -21,18 +21,23 @@ struct App
     start_time: Instant,
     last_update: Instant,
     key_down: HashSet<KeyCode>,
+    frame_count: u32,
+    last_fps_print: Instant,
 }
 
 impl App
 {
     fn new() -> Self
     {
+        let now = Instant::now();
         Self {
             gpu_state: None,
             world: world::World::new(),
-            start_time: Instant::now(),
-            last_update: Instant::now(),
+            start_time: now,
+            last_update: now,
             key_down: HashSet::new(),
+            frame_count: 0,
+            last_fps_print: now,
         }
     }
 
@@ -40,6 +45,16 @@ impl App
     {
         let dt = self.last_update.elapsed().as_secs_f32();
         self.last_update = Instant::now();
+
+        // Update FPS counter
+        self.frame_count += 1;
+        let fps_elapsed = self.last_fps_print.elapsed();
+        if fps_elapsed.as_secs_f32() >= 1.0 {
+            let fps = self.frame_count as f32 / fps_elapsed.as_secs_f32();
+            println!("FPS: {:.2}", fps);
+            self.frame_count = 0;
+            self.last_fps_print = Instant::now();
+        }
 
         let move_speed = 10.0;
         let mut fwd_dist = 0.0;
