@@ -67,33 +67,52 @@ impl Brush
 pub struct Player
 {
     // Camera position
-    position: [f32; 3],
-    _pad0: f32,
+    pub position: [f32; 3],
+    // Computed from FOV: 1.0 / tan(fov_y / 2)
+    pub focal_length: f32,
 
-    // Eye direction
-    direction: [f32; 3],
-    _pad1: f32,
+    // Eye direction unit vector
+    pub forward: [f32; 3],
+    pub _pad1: f32,
+
+    // Unit vector pointing right
+    pub right: [f32; 3],
+    pub _pad2: f32,
+
+    // Unit vector pointing up
+    pub up: [f32; 3],
+    pub _pad3: f32,
 
     // Yaw and pitch angles in degrees
-    yaw: f32,
-    pitch: f32,
-
-    // Padding to reach 48 bytes (multiple of 16)
-    _pad2: [f32; 2],
+    pub yaw: f32,
+    pub pitch: f32,
+    pub _pad4: [f32; 2],
 }
 
 impl Player
 {
-    pub fn update_direction(&mut self)
+    pub fn update_basis(&mut self)
     {
         let yaw_rad = self.yaw.to_radians();
         let pitch_rad = self.pitch.to_radians();
 
-        self.direction = [
+        self.forward = [
             yaw_rad.sin() * pitch_rad.cos(),
             pitch_rad.sin(),
             yaw_rad.cos() * pitch_rad.cos(),
         ];
+
+        // focal_length = 1.0 / tan(fov_y_radians / 2.0)
+        // Let's fix FOV at 70 degrees for now
+        let fov_y = 70.0f32;
+        self.focal_length = 1.0 / (fov_y.to_radians() * 0.5).tan();
+
+        // Calculate right vector (orthogonal to forward and world up)
+        let world_up = [0.0, 1.0, 0.0];
+        self.right = vec3_normalize(vec3_cross(world_up, self.forward));
+
+        // Calculate local up vector
+        self.up = vec3_cross(self.forward, self.right);
     }
 }
 
@@ -166,7 +185,7 @@ impl GPUWorld
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -210,8 +229,9 @@ pub struct World
 {
     brushes: Vec<Brush>,
 
+    /// The world uses a metric coordinate system.
     /// The grid is a 3D array of cells such that each cell
-    /// is 1x1x1 unit (one meter) in size
+    /// is 1x1x1 unit in size, with 1 unit = 1 meter.
     /// Each cell contains a list of up to 32 brush indices (u16)
     grid: Box<[u16]>,
 
@@ -229,17 +249,21 @@ impl World
             grid: vec![SLOT_EMPTY; GRID_COUNT].into_boxed_slice(),
             player: Player {
                 position: [128.0, 1.8, 128.0],
-                _pad0: 0.0,
-                direction: [0.0, 0.0, 1.0],
+                focal_length: 1.5,
+                forward: [0.0, 0.0, 1.0],
                 _pad1: 0.0,
+                right: [1.0, 0.0, 0.0],
+                _pad2: 0.0,
+                up: [0.0, 1.0, 0.0],
+                _pad3: 0.0,
                 yaw: 0.0,
                 pitch: 0.0,
-                _pad2: [0.0; 2],
+                _pad4: [0.0; 2],
             },
             gpu: GPUWorld::new(device),
         };
 
-        world.player.update_direction();
+        world.player.update_basis();
 
         // Add a default floor brush
         world.add_brush(Brush {
@@ -260,7 +284,7 @@ impl World
     {
         self.player.yaw += yaw;
         self.player.pitch = (self.player.pitch + pitch).clamp(-89.0, 89.0);
-        self.player.update_direction();
+        self.player.update_basis();
     }
 
     /// Add a brush to the world grid

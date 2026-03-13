@@ -14,9 +14,13 @@ struct Brush {
 
 struct Player {
     position: vec3<f32>,
-    direction: vec3<f32>,
-    yaw: f32,
-    pitch: f32,
+    focal_length: f32,
+    forward: vec3<f32>,
+    _pad1: f32,
+    right: vec3<f32>,
+    _pad2: f32,
+    up: vec3<f32>,
+    _pad3: f32,
 };
 
 @group(0) @binding(0)
@@ -40,6 +44,7 @@ const SLOT_EMPTY: u32 = 65535u;
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) uv: vec2<f32>,
+    @location(1) ray_dir: vec3<f32>,
 };
 
 @vertex
@@ -49,6 +54,13 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
     let y = f32(i32(in_vertex_index & 2u) << 1u) - 1.0;
     out.clip_position = vec4<f32>(x, y, 0.0, 1.0);
     out.uv = vec2<f32>(x, y);
+
+    // Calculate ray direction at this vertex
+    out.ray_dir =
+        out.uv.x * uniforms.aspect_ratio * player.right +
+        out.uv.y * player.up +
+        player.focal_length * player.forward;
+
     return out;
 }
 
@@ -143,20 +155,7 @@ fn get_normal(p: vec3<f32>, ray_dir: vec3<f32>) -> vec3<f32> {
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let ro = player.position;
-    let uv = vec2<f32>(in.uv.x * uniforms.aspect_ratio, in.uv.y);
-
-    // TODO: precalculate these vectors on the host side
-
-    // Calculate camera basis vectors
-    let forward = normalize(player.direction);
-    let world_up = vec3<f32>(0.0, 1.0, 0.0);
-    let right = normalize(cross(world_up, forward));
-    let up = cross(forward, right);
-
-    // TODO: use an FOV instead of hardcoded 1.5 constant here
-
-    // Transform screen-space ray to world-space
-    let ray_dir = normalize(uv.x * right + uv.y * up + 1.5 * forward);
+    let ray_dir = normalize(in.ray_dir);
 
     var t = 0.0;
     for (var i = 0; i < 256; i++) {
