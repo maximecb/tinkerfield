@@ -73,7 +73,7 @@ fn sd_box(p: vec3<f32>, b: vec3<f32>) -> f32 {
     return length(max(q, vec3<f32>(0.0))) + min(max(q.x, max(q.y, q.z)), 0.0);
 }
 
-fn get_brush_sdf(p_world: vec3<f32>, brush_idx: u32) -> f32 {
+fn sdf_brush(p_world: vec3<f32>, brush_idx: u32) -> f32 {
     let b = brushes[brush_idx];
 
     // Transform world point to local space (but keep world scale for the SDF)
@@ -91,29 +91,8 @@ fn get_brush_sdf(p_world: vec3<f32>, brush_idx: u32) -> f32 {
     return d;
 }
 
-fn sdf(p: vec3<f32>, ray_dir: vec3<f32>) -> f32 {
-    // Determine grid cell
-    let gx = u32(floor(p.x));
-    let gy = u32(floor(p.y));
-    let gz = u32(floor(p.z));
-
-    if (gx >= GRID_W || gy >= GRID_H || gz >= GRID_D) {
-        return 1.0;
-    }
-
-    let cell_idx = ((gy * GRID_D + gz) * GRID_W + gx) * GRID_C;
-
-    // Calculate distance to next cell boundary as a default step
-    let next_x = select(f32(gx + 1u), f32(gx), ray_dir.x < 0.0);
-    let next_y = select(f32(gy + 1u), f32(gy), ray_dir.y < 0.0);
-    let next_z = select(f32(gz + 1u), f32(gz), ray_dir.z < 0.0);
-
-    let dt_x = (next_x - p.x) / ray_dir.x;
-    let dt_y = (next_y - p.y) / ray_dir.y;
-    let dt_z = (next_z - p.z) / ray_dir.z;
-
-    var d = max(0.001, min(dt_x, min(dt_y, dt_z)) + 0.001);
-
+fn sdf_at_cell(p: vec3<f32>, cell_idx: u32) -> f32 {
+    var d = 1e10;
     var found = false;
     for (var i = 0u; i < GRID_C; i++) {
         let word_idx = (cell_idx + i) / 2u;
@@ -124,7 +103,7 @@ fn sdf(p: vec3<f32>, ray_dir: vec3<f32>) -> f32 {
             break;
         }
 
-        let d_brush = get_brush_sdf(p, brush_idx);
+        let d_brush = sdf_brush(p, brush_idx);
         let op = brushes[brush_idx].op;
 
         if (!found) {
@@ -142,33 +121,88 @@ fn sdf(p: vec3<f32>, ray_dir: vec3<f32>) -> f32 {
     return d;
 }
 
-fn get_normal(p: vec3<f32>, ray_dir: vec3<f32>) -> vec3<f32> {
+fn sdf_global(p: vec3<f32>) -> f32 {
+    let gx = u32(floor(p.x));
+    let gy = u32(floor(p.y));
+    let gz = u32(floor(p.z));
+
+    if (gx >= GRID_W || gy >= GRID_H || gz >= GRID_D) {
+        return 1.0;
+    }
+
+    let cell_idx = ((gy * GRID_D + gz) * GRID_W + gx) * GRID_C;
+    return sdf_at_cell(p, cell_idx);
+}
+
+fn get_normal(p: vec3<f32>) -> vec3<f32> {
     let e = vec2<f32>(1.0, -1.0) * 0.001;
     return normalize(
-        e.xyy * sdf(p + e.xyy, ray_dir) +
-        e.yyx * sdf(p + e.yyx, ray_dir) +
-        e.yxy * sdf(p + e.yxy, ray_dir) +
-        e.xxx * sdf(p + e.xxx, ray_dir)
+        e.xyy * sdf_global(p + e.xyy) +
+        e.yyx * sdf_global(p + e.yyx) +
+        e.yxy * sdf_global(p + e.yxy) +
+        e.xxx * sdf_global(p + e.xxx)
     );
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let ro = player.position;
-    let ray_dir = normalize(in.ray_dir);
+    let rd = normalize(in.ray_dir);
+
+    let inv_rd = 1.0 / rd;
+    let delta_t = abs(inv_rd);
+    let step = vec3<i32>(sign(rd));
+
+    var ipos = vec3<i32>(floor(ro));
+    var t_max = (vec3<f32>(ipos) - ro + 0.5 + vec3<f32>(step) * 0.5) * inv_rd;
 
     var t = 0.0;
-    for (var i = 0; i < 256; i++) {
-        let p = ro + ray_dir * t;
-        let d = sdf(p, ray_dir);
-        if (d < 0.001) {
-            let n = get_normal(p, ray_dir);
-            let light_dir = normalize(vec3<f32>(1.0, 1.0, -1.0));
-            let diff = max(dot(n, light_dir), 0.2);
-            let color = vec3<f32>(0.4, 0.5, 0.7) * diff;
-            return vec4<f32>(color, 1.0);
+    for (var i = 0; i < 128; i++) {
+        if (ipos.x < 0 || ipos.y < 0 || ipos.z < 0 || ipos.x >= i32(GRID_W) || ipos.y >= i32(GRID_H) || ipos.z >= i32(GRID_D)) {
+            break;
         }
-        t += d;
+
+        let cell_idx = ((u32(ipos.y) * GRID_D + u32(ipos.z)) * GRID_W + u32(ipos.x)) * GRID_C;
+        let t_boundary = min(t_max.x, min(t_max.y, t_max.z));
+
+        // Check if cell is potentially non-empty (first 2 slots)
+        if (grid[cell_idx / 2u] != 0xFFFFFFFFu) {
+            // Sphere trace within this cell
+            while (t < t_boundary - 0.001) {
+                let p = ro + rd * t;
+                let d = sdf_at_cell(p, cell_idx);
+                if (d < 0.001) {
+                    let n = get_normal(p);
+                    let light_dir = normalize(vec3<f32>(1.0, 1.0, -1.0));
+                    let diff = max(dot(n, light_dir), 0.2);
+                    let color = vec3<f32>(0.4, 0.5, 0.7) * diff;
+                    return vec4<f32>(color, 1.0);
+                }
+                t += max(d, 0.001);
+            }
+        }
+
+        t = t_boundary;
+
+        // Step DDA
+        if (t_max.x < t_max.y) {
+            if (t_max.x < t_max.z) {
+                t_max.x += delta_t.x;
+                ipos.x += step.x;
+            } else {
+                t_max.z += delta_t.z;
+                ipos.z += step.z;
+            }
+        } else {
+            if (t_max.y < t_max.z) {
+                t_max.y += delta_t.y;
+                ipos.y += step.y;
+            } else {
+                t_max.z += delta_t.z;
+                ipos.z += step.z;
+            }
+        }
+
         if (t > 150.0) { break; }
     }
 
