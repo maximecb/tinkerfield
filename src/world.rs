@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::time::Instant;
+use crate::gpu::GPUWorld;
 use crate::math::*;
 
 /// Brush kinds
@@ -120,105 +121,6 @@ pub const GRID_D: usize = 256;
 pub const GRID_H: usize = 64;
 pub const GRID_C: usize = 32;
 pub const GRID_COUNT: usize = GRID_W * GRID_D * GRID_H * GRID_C;
-
-pub struct GPUWorld
-{
-    pub brush_buffer: wgpu::Buffer,
-    pub grid_buffer: wgpu::Buffer,
-    pub player_buffer: wgpu::Buffer,
-    pub bind_group_layout: wgpu::BindGroupLayout,
-    pub bind_group: wgpu::BindGroup,
-}
-
-impl GPUWorld
-{
-    pub fn new(device: &wgpu::Device) -> Self
-    {
-        let brush_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Brush Buffer"),
-            size: (MAX_BRUSHES * std::mem::size_of::<Brush>()) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let grid_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Grid Buffer"),
-            size: (GRID_COUNT * std::mem::size_of::<u16>()) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let player_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Player Buffer"),
-            size: std::mem::size_of::<Player>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("World Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
-
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("World Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: brush_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: grid_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: player_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        Self {
-            brush_buffer,
-            grid_buffer,
-            player_buffer,
-            bind_group_layout,
-            bind_group,
-        }
-    }
-}
 
 pub struct World
 {
