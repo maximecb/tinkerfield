@@ -1,46 +1,125 @@
-/// Rotate a 3D vector by a quaternion (x, y, z, w)
-pub fn quat_rotate(q: [f32; 4], v: [f32; 3]) -> [f32; 3]
+use std::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, Neg};
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct Vec3
 {
-    let [qx, qy, qz, qw] = q;
-    let [vx, vy, vz] = v;
-
-    // Standard quaternion-vector rotation: q * (0, v) * conj(q)
-    let tx = 2.0 * (qy * vz - qz * vy);
-    let ty = 2.0 * (qz * vx - qx * vz);
-    let tz = 2.0 * (qx * vy - qy * vx);
-
-    [
-        vx + qw * tx + (qy * tz - qz * ty),
-        vy + qw * ty + (qz * tx - qx * tz),
-        vz + qw * tz + (qx * ty - qy * tx),
-    ]
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
 }
 
-pub fn vec3_add(a: [f32; 3], b: [f32; 3]) -> [f32; 3]
+impl Vec3
 {
-    [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
+    pub const fn new(x: f32, y: f32, z: f32) -> Self {
+        Self { x, y, z }
+    }
+
+    pub fn dot(self, other: Self) -> f32 {
+        self.x * other.x + self.y * other.y + self.z * other.z
+    }
+
+    pub fn cross(self, other: Self) -> Self {
+        Self {
+            x: self.y * other.z - self.z * other.y,
+            y: self.z * other.x - self.x * other.z,
+            z: self.x * other.y - self.y * other.x,
+        }
+    }
+
+    pub fn length_sq(self) -> f32 {
+        self.dot(self)
+    }
+
+    pub fn length(self) -> f32 {
+        self.length_sq().sqrt()
+    }
+
+    pub fn normalize(self) -> Self {
+        let len = self.length();
+        if len > 0.0 {
+            self / len
+        } else {
+            self
+        }
+    }
 }
 
-pub fn vec3_mul(a: [f32; 3], b: [f32; 3]) -> [f32; 3]
-{
-    [a[0] * b[0], a[1] * b[1], a[2] * b[2]]
+impl Add for Vec3 {
+    type Output = Self;
+    fn add(self, other: Self) -> Self {
+        Self::new(self.x + other.x, self.y + other.y, self.z + other.z)
+    }
 }
 
-pub fn vec3_cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3]
-{
-    [
-        a[1] * b[2] - a[2] * b[1],
-        a[2] * b[0] - a[0] * b[2],
-        a[0] * b[1] - a[1] * b[0],
-    ]
+impl Sub for Vec3 {
+    type Output = Self;
+    fn sub(self, other: Self) -> Self {
+        Self::new(self.x - other.x, self.y - other.y, self.z - other.z)
+    }
 }
 
-pub fn vec3_normalize(a: [f32; 3]) -> [f32; 3]
+impl Mul<f32> for Vec3 {
+    type Output = Self;
+    fn mul(self, s: f32) -> Self {
+        Self::new(self.x * s, self.y * s, self.z * s)
+    }
+}
+
+impl Mul<Vec3> for Vec3 {
+    type Output = Self;
+    fn mul(self, other: Self) -> Self {
+        Self::new(self.x * other.x, self.y * other.y, self.z * other.z)
+    }
+}
+
+impl Div<f32> for Vec3 {
+    type Output = Self;
+    fn div(self, s: f32) -> Self {
+        Self::new(self.x / s, self.y / s, self.z / s)
+    }
+}
+
+impl AddAssign for Vec3 {
+    fn add_assign(&mut self, other: Self) {
+        *self = *self + other;
+    }
+}
+
+impl SubAssign for Vec3 {
+    fn sub_assign(&mut self, other: Self) {
+        *self = *self - other;
+    }
+}
+
+impl Neg for Vec3 {
+    type Output = Self;
+    fn neg(self) -> Self {
+        Self::new(-self.x, -self.y, -self.z)
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct Quat
 {
-    let len = (a[0]*a[0] + a[1]*a[1] + a[2]*a[2]).sqrt();
-    if len > 0.0 {
-        [a[0]/len, a[1]/len, a[2]/len]
-    } else {
-        a
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub w: f32,
+}
+
+impl Quat
+{
+    pub const fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
+        Self { x, y, z, w }
+    }
+
+    pub const IDENTITY: Self = Self::new(0.0, 0.0, 0.0, 1.0);
+
+    pub fn rotate_vec(self, v: Vec3) -> Vec3 {
+        let q_vec = Vec3::new(self.x, self.y, self.z);
+        let t = q_vec.cross(v) * 2.0;
+        v + t * self.w + q_vec.cross(t)
     }
 }
