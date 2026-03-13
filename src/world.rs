@@ -232,13 +232,11 @@ pub struct World
     grid: Box<[u16]>,
 
     pub player: Player,
-
-    pub gpu: GPUWorld,
 }
 
 impl World
 {
-    pub fn new(device: &wgpu::Device) -> Self
+    pub fn new() -> Self
     {
         let mut world = Self {
             brushes: Vec::with_capacity(1024),
@@ -257,7 +255,6 @@ impl World
                 pitch: 0.0,
                 _pad4: [0.0; 2],
             },
-            gpu: GPUWorld::new(device),
         };
 
         world.player.update_basis();
@@ -394,19 +391,19 @@ impl World
     }
 
     /// Send player data to the GPU
-    pub fn upload_player(&self, queue: &wgpu::Queue)
+    pub fn upload_player(&self, queue: &wgpu::Queue, gpu: &GPUWorld)
     {
-        queue.write_buffer(&self.gpu.player_buffer, 0, bytemuck::bytes_of(&self.player));
+        queue.write_buffer(&gpu.player_buffer, 0, bytemuck::bytes_of(&self.player));
     }
 
     /// Send world data to the GPU
-    pub fn upload_world(&self, queue: &wgpu::Queue)
+    pub fn upload_world(&self, queue: &wgpu::Queue, gpu: &GPUWorld)
     {
         let start = Instant::now();
         if !self.brushes.is_empty() {
-            queue.write_buffer(&self.gpu.brush_buffer, 0, bytemuck::cast_slice(&self.brushes));
+            queue.write_buffer(&gpu.brush_buffer, 0, bytemuck::cast_slice(&self.brushes));
         }
-        queue.write_buffer(&self.gpu.grid_buffer, 0, bytemuck::cast_slice(self.grid.as_ref()));
+        queue.write_buffer(&gpu.grid_buffer, 0, bytemuck::cast_slice(self.grid.as_ref()));
         let elapsed = start.elapsed();
         println!("World upload time: {:.2}ms", elapsed.as_secs_f32() * 1000.0);
     }

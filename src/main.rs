@@ -22,7 +22,9 @@ struct Uniforms
     _padding: [f32; 2],
 }
 
-struct State
+/// Rendering and windowing state
+/// On mobile, this can be recreated multiple times
+struct GPUState
 {
     surface: wgpu::Surface<'static>,
     device: wgpu::Device,
@@ -30,13 +32,11 @@ struct State
     render_pipeline: wgpu::RenderPipeline,
     uniform_buffer: wgpu::Buffer,
     uniform_bind_group: wgpu::BindGroup,
-    start_time: Instant,
-    last_update: Instant,
     window: Arc<Window>,
-    world: world::World,
+    gpu_world: world::GPUWorld,
 }
 
-impl State
+impl GPUState
 {
     async fn new(window: Arc<Window>) -> Self
     {
@@ -124,14 +124,12 @@ impl State
             label: Some("uniform_bind_group"),
         });
 
-        let world = world::World::new(&device);
-        world.upload_world(&queue);
-        world.upload_player(&queue);
+        let gpu_world = world::GPUWorld::new(&device);
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&uniform_bind_group_layout, &world.gpu.bind_group_layout],
+                bind_group_layouts: &[&uniform_bind_group_layout, &gpu_world.bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -168,50 +166,22 @@ impl State
             render_pipeline,
             uniform_buffer,
             uniform_bind_group,
-            start_time: Instant::now(),
-            last_update: Instant::now(),
             window,
-            world,
+            gpu_world,
         }
     }
 
-    fn update(&mut self, key_down: &HashSet<KeyCode>)
+    fn render(&mut self, world: &world::World, start_time: &Instant) -> Result<(), wgpu::SurfaceError>
     {
-        let dt = self.last_update.elapsed().as_secs_f32();
-        self.last_update = Instant::now();
-
-        let move_speed = 10.0;
-        let mut fwd_dist = 0.0;
-        let mut side_dist = 0.0;
-
-        if key_down.contains(&KeyCode::KeyW) || key_down.contains(&KeyCode::ArrowUp) {
-            fwd_dist += move_speed * dt;
-        }
-        if key_down.contains(&KeyCode::KeyS) || key_down.contains(&KeyCode::ArrowDown) {
-            fwd_dist -= move_speed * dt;
-        }
-        if key_down.contains(&KeyCode::KeyA) || key_down.contains(&KeyCode::ArrowLeft) {
-            side_dist -= move_speed * dt;
-        }
-        if key_down.contains(&KeyCode::KeyD) || key_down.contains(&KeyCode::ArrowRight) {
-            side_dist += move_speed * dt;
-        }
-
-        if fwd_dist != 0.0 || side_dist != 0.0 {
-            self.world.move_player(fwd_dist, side_dist);
-        }
-
+        // Update uniforms
         let uniforms = Uniforms {
-            time: self.start_time.elapsed().as_secs_f32(),
+            time: start_time.elapsed().as_secs_f32(),
             aspect_ratio: 800.0 / 600.0,
             _padding: [0.0; 2],
         };
         self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
-        self.world.upload_player(&self.queue);
-    }
+        world.upload_player(&self.queue, &self.gpu_world);
 
-    fn render(&mut self) -> Result<(), wgpu::SurfaceError>
-    {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -241,7 +211,7 @@ impl State
 
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-        render_pass.set_bind_group(1, &self.world.gpu.bind_group, &[]);
+        render_pass.set_bind_group(1, &self.gpu_world.bind_group, &[]);
         render_pass.draw(0..3, 0..1);
         drop(render_pass);
 
@@ -254,15 +224,62 @@ impl State
 
 struct App
 {
-    state: Option<State>,
+    gpu_state: Option<GPUState>,
+    world: world::World,
+    start_time: Instant,
+    last_update: Instant,
     key_down: HashSet<KeyCode>,
+}
+
+impl App
+{
+    fn new() -> Self
+    {
+        Self {
+            gpu_state: None,
+            world: world::World::new(),
+            start_time: Instant::now(),
+            last_update: Instant::now(),
+            key_down: HashSet::new(),
+        }
+    }
+
+    fn update(&mut self)
+    {
+        let dt = self.last_update.elapsed().as_secs_f32();
+        self.last_update = Instant::now();
+
+        let move_speed = 10.0;
+        let mut fwd_dist = 0.0;
+        let mut side_dist = 0.0;
+
+        if self.key_down.contains(&KeyCode::KeyW) || self.key_down.contains(&KeyCode::ArrowUp) {
+            fwd_dist += move_speed * dt;
+        }
+        if self.key_down.contains(&KeyCode::KeyS) || self.key_down.contains(&KeyCode::ArrowDown) {
+            fwd_dist -= move_speed * dt;
+        }
+        if self.key_down.contains(&KeyCode::KeyA) || self.key_down.contains(&KeyCode::ArrowLeft) {
+            side_dist -= move_speed * dt;
+        }
+        if self.key_down.contains(&KeyCode::KeyD) || self.key_down.contains(&KeyCode::ArrowRight) {
+            side_dist += move_speed * dt;
+        }
+
+        if fwd_dist != 0.0 || side_dist != 0.0 {
+            self.world.move_player(fwd_dist, side_dist);
+        }
+    }
 }
 
 impl ApplicationHandler for App
 {
-    /// Called when the application is ready to create a window
     fn resumed(&mut self, event_loop: &ActiveEventLoop)
     {
+        if self.gpu_state.is_some() {
+            return;
+        }
+
         let window = Arc::new(
             event_loop
                 .create_window(
@@ -274,8 +291,13 @@ impl ApplicationHandler for App
                 .unwrap(),
         );
 
-        let state = pollster::block_on(State::new(Arc::clone(&window)));
-        self.state = Some(state);
+        let gpu_state = pollster::block_on(GPUState::new(Arc::clone(&window)));
+
+        // Perform initial upload
+        self.world.upload_world(&gpu_state.queue, &gpu_state.gpu_world);
+        self.world.upload_player(&gpu_state.queue, &gpu_state.gpu_world);
+
+        self.gpu_state = Some(gpu_state);
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent)
@@ -306,21 +328,23 @@ impl ApplicationHandler for App
             }
 
             WindowEvent::Focused(true) => {
-                let state = self.state.as_mut().unwrap();
-                let _ = state.window.set_cursor_grab(CursorGrabMode::Locked)
-                    .or_else(|_| state.window.set_cursor_grab(CursorGrabMode::Confined));
-                state.window.set_cursor_visible(false);
+                if let Some(gpu_state) = self.gpu_state.as_ref() {
+                    let _ = gpu_state.window.set_cursor_grab(CursorGrabMode::Locked)
+                        .or_else(|_| gpu_state.window.set_cursor_grab(CursorGrabMode::Confined));
+                    gpu_state.window.set_cursor_visible(false);
+                }
             }
 
             WindowEvent::RedrawRequested => {
-                let state = self.state.as_mut().unwrap();
-                state.update(&self.key_down);
-                match state.render() {
-                    Ok(_) => {}
-                    Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
-                    Err(e) => eprintln!("{:?}", e),
+                self.update();
+                if let Some(gpu_state) = self.gpu_state.as_mut() {
+                    match gpu_state.render(&self.world, &self.start_time) {
+                        Ok(_) => {}
+                        Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
+                        Err(e) => eprintln!("{:?}", e),
+                    }
+                    gpu_state.window.request_redraw();
                 }
-                state.window.request_redraw();
             }
             _ => {}
         }
@@ -328,14 +352,12 @@ impl ApplicationHandler for App
 
     fn device_event(&mut self, _event_loop: &ActiveEventLoop, _device_id: DeviceId, event: DeviceEvent)
     {
-        if let Some(state) = self.state.as_mut() {
-            if let DeviceEvent::MouseMotion { delta } = event {
-                let sensitivity = 0.1;
-                state.world.rotate_player(
-                    delta.0 as f32 * sensitivity,
-                    -delta.1 as f32 * sensitivity,
-                );
-            }
+        if let DeviceEvent::MouseMotion { delta } = event {
+            let sensitivity = 0.1;
+            self.world.rotate_player(
+                delta.0 as f32 * sensitivity,
+                -delta.1 as f32 * sensitivity,
+            );
         }
     }
 }
@@ -343,9 +365,6 @@ impl ApplicationHandler for App
 fn main()
 {
     let event_loop = EventLoop::new().unwrap();
-    let mut app = App {
-        state: None,
-        key_down: HashSet::new()
-    };
+    let mut app = App::new();
     event_loop.run_app(&mut app).unwrap();
 }
