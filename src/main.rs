@@ -1,9 +1,10 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
-    event::{DeviceEvent, DeviceId, KeyEvent, WindowEvent},
+    event::{DeviceEvent, DeviceId, KeyEvent, ElementState, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
     window::{CursorGrabMode, Window, WindowId},
@@ -30,6 +31,7 @@ struct State
     uniform_buffer: wgpu::Buffer,
     uniform_bind_group: wgpu::BindGroup,
     start_time: Instant,
+    last_update: Instant,
     window: Arc<Window>,
     world: world::World,
 }
@@ -167,13 +169,38 @@ impl State
             uniform_buffer,
             uniform_bind_group,
             start_time: Instant::now(),
+            last_update: Instant::now(),
             window,
             world,
         }
     }
 
-    fn update(&mut self)
+    fn update(&mut self, key_down: &HashSet<KeyCode>)
     {
+        let dt = self.last_update.elapsed().as_secs_f32();
+        self.last_update = Instant::now();
+
+        let move_speed = 10.0;
+        let mut fwd_dist = 0.0;
+        let mut side_dist = 0.0;
+
+        if key_down.contains(&KeyCode::KeyW) || key_down.contains(&KeyCode::ArrowUp) {
+            fwd_dist += move_speed * dt;
+        }
+        if key_down.contains(&KeyCode::KeyS) || key_down.contains(&KeyCode::ArrowDown) {
+            fwd_dist -= move_speed * dt;
+        }
+        if key_down.contains(&KeyCode::KeyA) || key_down.contains(&KeyCode::ArrowLeft) {
+            side_dist -= move_speed * dt;
+        }
+        if key_down.contains(&KeyCode::KeyD) || key_down.contains(&KeyCode::ArrowRight) {
+            side_dist += move_speed * dt;
+        }
+
+        if fwd_dist != 0.0 || side_dist != 0.0 {
+            self.world.move_player(fwd_dist, side_dist);
+        }
+
         let uniforms = Uniforms {
             time: self.start_time.elapsed().as_secs_f32(),
             aspect_ratio: 800.0 / 600.0,
@@ -229,6 +256,7 @@ struct App
 {
     state: Option<State>,
     cursor_initialized: bool,
+    key_down: HashSet<KeyCode>,
 }
 
 impl ApplicationHandler for App
@@ -258,7 +286,6 @@ impl ApplicationHandler for App
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent)
     {
-        let state = self.state.as_mut().unwrap();
         match event {
             WindowEvent::CloseRequested
             | WindowEvent::KeyboardInput {
@@ -269,7 +296,22 @@ impl ApplicationHandler for App
                     },
                 ..
             } => event_loop.exit(),
+            WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        physical_key: PhysicalKey::Code(key),
+                        state,
+                        ..
+                    },
+                ..
+            } => {
+                match state {
+                    ElementState::Pressed => { self.key_down.insert(key); }
+                    ElementState::Released => { self.key_down.remove(&key); }
+                }
+            }
             WindowEvent::RedrawRequested => {
+                let state = self.state.as_mut().unwrap();
                 if !self.cursor_initialized {
                     let _ = state.window.set_cursor_grab(CursorGrabMode::Locked)
                         .or_else(|_| state.window.set_cursor_grab(CursorGrabMode::Confined));
@@ -277,7 +319,7 @@ impl ApplicationHandler for App
                     self.cursor_initialized = true;
                 }
 
-                state.update();
+                state.update(&self.key_down);
                 match state.render() {
                     Ok(_) => {}
                     Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
@@ -306,6 +348,10 @@ impl ApplicationHandler for App
 fn main()
 {
     let event_loop = EventLoop::new().unwrap();
-    let mut app = App { state: None, cursor_initialized: false };
+    let mut app = App {
+        state: None,
+        cursor_initialized: false,
+        key_down: HashSet::new()
+    };
     event_loop.run_app(&mut app).unwrap();
 }
