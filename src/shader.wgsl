@@ -173,6 +173,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     }
 
     // Sky gradient
-    let sky = mix(vec3<f32>(0.1, 0.2, 0.4), vec3<f32>(0.5, 0.7, 1.0), in.uv.y * 0.5 + 0.5);
+    let sky = mix(vec3<f32>(0.5, 0.8, 1.0), vec3<f32>(0.1, 0.4, 0.9), in.uv.y * 0.5 + 0.5);
     return vec4<f32>(sky, 1.0);
 }
