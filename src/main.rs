@@ -255,12 +255,12 @@ impl State
 struct App
 {
     state: Option<State>,
-    cursor_initialized: bool,
     key_down: HashSet<KeyCode>,
 }
 
 impl ApplicationHandler for App
 {
+    /// Called when the application is ready to create a window
     fn resumed(&mut self, event_loop: &ActiveEventLoop)
     {
         let window = Arc::new(
@@ -275,12 +275,6 @@ impl ApplicationHandler for App
         );
 
         let state = pollster::block_on(State::new(Arc::clone(&window)));
-
-        // Try to grab the cursor after everything is initialized
-        let _ = window.set_cursor_grab(CursorGrabMode::Locked)
-            .or_else(|_| window.set_cursor_grab(CursorGrabMode::Confined));
-        window.set_cursor_visible(false);
-
         self.state = Some(state);
     }
 
@@ -310,15 +304,16 @@ impl ApplicationHandler for App
                     ElementState::Released => { self.key_down.remove(&key); }
                 }
             }
+
+            WindowEvent::Focused(true) => {
+                let state = self.state.as_mut().unwrap();
+                let _ = state.window.set_cursor_grab(CursorGrabMode::Locked)
+                    .or_else(|_| state.window.set_cursor_grab(CursorGrabMode::Confined));
+                state.window.set_cursor_visible(false);
+            }
+
             WindowEvent::RedrawRequested => {
                 let state = self.state.as_mut().unwrap();
-                if !self.cursor_initialized {
-                    let _ = state.window.set_cursor_grab(CursorGrabMode::Locked)
-                        .or_else(|_| state.window.set_cursor_grab(CursorGrabMode::Confined));
-                    state.window.set_cursor_visible(false);
-                    self.cursor_initialized = true;
-                }
-
                 state.update(&self.key_down);
                 match state.render() {
                     Ok(_) => {}
@@ -350,7 +345,6 @@ fn main()
     let event_loop = EventLoop::new().unwrap();
     let mut app = App {
         state: None,
-        cursor_initialized: false,
         key_down: HashSet::new()
     };
     event_loop.run_app(&mut app).unwrap();
