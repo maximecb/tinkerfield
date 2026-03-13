@@ -171,7 +171,7 @@ impl GPUState
         }
     }
 
-    fn render(&mut self, world: &world::World, start_time: &Instant) -> Result<(), wgpu::SurfaceError>
+    fn render(&mut self, start_time: &Instant) -> Result<(), wgpu::SurfaceError>
     {
         // Update uniforms
         let uniforms = Uniforms {
@@ -180,7 +180,6 @@ impl GPUState
             _padding: [0.0; 2],
         };
         self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
-        world.upload_player(&self.queue, &self.gpu_world);
 
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -338,7 +337,10 @@ impl ApplicationHandler for App
             WindowEvent::RedrawRequested => {
                 self.update();
                 if let Some(gpu_state) = self.gpu_state.as_mut() {
-                    match gpu_state.render(&self.world, &self.start_time) {
+
+                    self.world.upload_player(&gpu_state.queue, &gpu_state.gpu_world);
+
+                    match gpu_state.render(&self.start_time) {
                         Ok(_) => {}
                         Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
                         Err(e) => eprintln!("{:?}", e),
