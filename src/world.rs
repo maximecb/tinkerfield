@@ -16,6 +16,17 @@ pub const OP_SUB: u32 = 1;
 /// Grid cell slot empty
 pub const SLOT_EMPTY: u16 = u16::MAX;
 
+#[derive(Default, Copy, Clone, Debug)]
+#[repr(u32)]
+pub enum Material
+{
+    #[default]
+    Concrete,
+    Metal,
+    Wood,
+    Grass,
+}
+
 // Total size: 64 bytes
 // Every vec3/vec4 field is 16-byte aligned
 #[repr(C)]
@@ -317,11 +328,13 @@ impl World
         index
     }
 
+    /// Send player data to the GPU
     pub fn upload_player(&self, queue: &wgpu::Queue)
     {
         queue.write_buffer(&self.gpu.player_buffer, 0, bytemuck::bytes_of(&self.player));
     }
 
+    /// Send world data to the GPU
     pub fn upload_world(&self, queue: &wgpu::Queue)
     {
         let start = Instant::now();
