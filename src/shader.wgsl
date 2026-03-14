@@ -91,6 +91,7 @@ fn sdf_brush(p_world: vec3<f32>, brush_idx: u32) -> f32 {
     return d;
 }
 
+/// This function assumes we have valid grid coordinates
 fn sdf_at_cell(p: vec3<f32>, cell_idx: u32) -> f32 {
     var d = 1e10;
     var found = false;
@@ -121,26 +122,13 @@ fn sdf_at_cell(p: vec3<f32>, cell_idx: u32) -> f32 {
     return d;
 }
 
-fn sdf_global(p: vec3<f32>) -> f32 {
-    let gx = u32(floor(p.x));
-    let gy = u32(floor(p.y));
-    let gz = u32(floor(p.z));
-
-    if (gx >= GRID_W || gy >= GRID_H || gz >= GRID_D) {
-        return 1.0;
-    }
-
-    let cell_idx = ((gy * GRID_D + gz) * GRID_W + gx) * GRID_C;
-    return sdf_at_cell(p, cell_idx);
-}
-
-fn get_normal(p: vec3<f32>) -> vec3<f32> {
+fn get_normal(p: vec3<f32>, cell_idx: u32) -> vec3<f32> {
     let e = vec2<f32>(1.0, -1.0) * 0.001;
     return normalize(
-        e.xyy * sdf_global(p + e.xyy) +
-        e.yyx * sdf_global(p + e.yyx) +
-        e.yxy * sdf_global(p + e.yxy) +
-        e.xxx * sdf_global(p + e.xxx)
+        e.xyy * sdf_at_cell(p + e.xyy, cell_idx) +
+        e.yyx * sdf_at_cell(p + e.yyx, cell_idx) +
+        e.yxy * sdf_at_cell(p + e.yxy, cell_idx) +
+        e.xxx * sdf_at_cell(p + e.xxx, cell_idx)
     );
 }
 
@@ -172,7 +160,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
                 let p = ro + rd * t;
                 let d = sdf_at_cell(p, cell_idx);
                 if (d < 0.001) {
-                    let n = get_normal(p);
+                    let n = get_normal(p, cell_idx);
                     let light_dir = normalize(vec3<f32>(1.0, 1.0, -1.0));
                     let diff = max(dot(n, light_dir), 0.2);
                     let color = vec3<f32>(0.4, 0.5, 0.7) * diff;
