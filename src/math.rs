@@ -117,9 +117,31 @@ impl Quat
 
     pub const IDENTITY: Self = Self::new(0.0, 0.0, 0.0, 1.0);
 
+    pub fn from_rotation_x(angle_rad: f32) -> Self {
+        let (s, c) = (angle_rad * 0.5).sin_cos();
+        Self::new(s, 0.0, 0.0, c)
+    }
+
+    pub fn from_rotation_y(angle_rad: f32) -> Self {
+        let (s, c) = (angle_rad * 0.5).sin_cos();
+        Self::new(0.0, s, 0.0, c)
+    }
+
     pub fn rotate_vec(self, v: Vec3) -> Vec3 {
         let q_vec = Vec3::new(self.x, self.y, self.z);
         let t = q_vec.cross(v) * 2.0;
         v + t * self.w + q_vec.cross(t)
+    }
+}
+
+impl Mul for Quat {
+    type Output = Self;
+    fn mul(self, rhs: Self) -> Self {
+        Self::new(
+            self.w * rhs.x + self.x * rhs.w + self.y * rhs.z - self.z * rhs.y,
+            self.w * rhs.y - self.x * rhs.z + self.y * rhs.w + self.z * rhs.x,
+            self.w * rhs.z + self.x * rhs.y - self.y * rhs.x + self.z * rhs.w,
+            self.w * rhs.w - self.x * rhs.x - self.y * rhs.y - self.z * rhs.z,
+        )
     }
 }

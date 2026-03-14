@@ -75,6 +75,11 @@ fn sd_box(p: vec3<f32>, b: vec3<f32>) -> f32 {
     return length(max(q, vec3<f32>(0.0))) + min(max(q.x, max(q.y, q.z)), 0.0);
 }
 
+fn sd_cylinder(p: vec3<f32>, h: f32, r: f32) -> f32 {
+    let d = abs(vec2<f32>(length(p.xy), p.z)) - vec2<f32>(r, h);
+    return min(max(d.x, d.y), 0.0) + length(max(d, vec2<f32>(0.0)));
+}
+
 fn sdf_brush(p_world: vec3<f32>, brush_idx: u32) -> f32 {
     let b = brushes[brush_idx];
 
@@ -86,6 +91,8 @@ fn sdf_brush(p_world: vec3<f32>, brush_idx: u32) -> f32 {
     var d = 1e10;
     if (b.kind == 0u) { // BOX
         d = sd_box(p_local, b.scale * 0.5);
+    } else if (b.kind == 1u) { // CYLINDER
+        d = sd_cylinder(p_local, b.scale.z * 0.5, b.scale.x * 0.5);
     } else if (b.kind == 2u) { // SPHERE
         d = length(p_local) - b.scale.x * 0.5;
     }
