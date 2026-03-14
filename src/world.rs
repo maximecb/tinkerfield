@@ -279,6 +279,12 @@ impl World
             for z in z_min..=z_max {
                 for x in x_min..=x_max {
                     let cell_idx = ((y * GRID_D + z) * GRID_W + x) * GRID_C;
+
+                    // If this is a subtraction brush, don't add it to empty cells
+                    if brush.op == OP_SUB && self.grid[cell_idx] == SLOT_EMPTY {
+                        continue;
+                    }
+
                     for slot in 0..GRID_C {
                         if self.grid[cell_idx + slot] == SLOT_EMPTY {
                             self.grid[cell_idx + slot] = index;
