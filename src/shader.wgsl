@@ -65,7 +65,9 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
 }
 
 fn qrot(q: vec4<f32>, v: vec3<f32>) -> vec3<f32> {
-    return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v);
+    let qxyz = q.xyz;
+    let t = 2.0 * cross(qxyz, v);
+    return v + q.w * t + cross(qxyz, t);
 }
 
 fn sd_box(p: vec3<f32>, b: vec3<f32>) -> f32 {
