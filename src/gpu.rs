@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Instant;
 use winit::window::Window;
-use crate::world::{Brush, Player, MAX_BRUSHES, GRID_COUNT};
+use crate::world::{Brush, Player, MAX_BRUSHES};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -15,7 +15,9 @@ pub struct Uniforms
 pub struct GPUWorld
 {
     pub brush_buffer: wgpu::Buffer,
-    pub grid_buffer: wgpu::Buffer,
+    pub octree_nodes_buffer: wgpu::Buffer,
+    pub octree_indices_buffer: wgpu::Buffer,
+    pub octree_root_buffer: wgpu::Buffer,
     pub player_buffer: wgpu::Buffer,
     pub bind_group_layout: wgpu::BindGroupLayout,
     pub bind_group: wgpu::BindGroup,
@@ -32,10 +34,24 @@ impl GPUWorld
             mapped_at_creation: false,
         });
 
-        let grid_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Grid Buffer"),
-            size: (GRID_COUNT * std::mem::size_of::<u16>()) as u64,
+        let octree_nodes_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Octree Nodes Buffer"),
+            size: 256 * 1024 * 1024,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let octree_indices_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Octree Indices Buffer"),
+            size: 256 * 1024 * 1024,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let octree_root_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Octree Root Buffer"),
+            size: 16, // vec3 + f32
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
@@ -49,7 +65,7 @@ impl GPUWorld
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("World Bind Group Layout"),
             entries: &[
-                wgpu::BindGroupLayoutEntry {
+                wgpu::BindGroupLayoutEntry { // Brushes
                     binding: 0,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
@@ -59,7 +75,7 @@ impl GPUWorld
                     },
                     count: None,
                 },
-                wgpu::BindGroupLayoutEntry {
+                wgpu::BindGroupLayoutEntry { // Octree Nodes
                     binding: 1,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
@@ -69,8 +85,28 @@ impl GPUWorld
                     },
                     count: None,
                 },
-                wgpu::BindGroupLayoutEntry {
+                wgpu::BindGroupLayoutEntry { // Octree Indices
                     binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry { // Octree Root
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry { // Player
+                    binding: 4,
                     visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
@@ -92,10 +128,18 @@ impl GPUWorld
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: grid_buffer.as_entire_binding(),
+                    resource: octree_nodes_buffer.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
+                    resource: octree_indices_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: octree_root_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
                     resource: player_buffer.as_entire_binding(),
                 },
             ],
@@ -103,7 +147,9 @@ impl GPUWorld
 
         Self {
             brush_buffer,
-            grid_buffer,
+            octree_nodes_buffer,
+            octree_indices_buffer,
+            octree_root_buffer,
             player_buffer,
             bind_group_layout,
             bind_group,

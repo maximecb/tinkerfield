@@ -129,8 +129,80 @@ impl ApplicationHandler for App
                 ..
             } => {
                 match state {
-                    ElementState::Pressed => { self.key_down.insert(key); }
-                    ElementState::Released => { self.key_down.remove(&key); }
+                    ElementState::Pressed => {
+                        if !self.key_down.contains(&key) {
+                            if key == KeyCode::KeyO {
+                                let dist = 2.0;
+                                let pos = self.world.player.position;
+                                let yaw_rad = self.world.player.yaw.to_radians();
+                                let spawn_pos = math::Vec3::new(
+                                    pos.x + yaw_rad.sin() * dist,
+                                    17.0, // center of 2m cube with base at floor Y=16
+                                    pos.z + yaw_rad.cos() * dist,
+                                );
+
+                                self.world.add_brush(world::Brush {
+                                    pos: spawn_pos,
+                                    kind: world::KIND_BOX,
+                                    scale: math::Vec3::new(2.0, 2.0, 2.0),
+                                    material: world::MAT_CONCRETE,
+                                    rot: math::Quat::IDENTITY,
+                                    op: world::OP_ADD,
+                                    _pad: [0; 3],
+                                });
+
+                                if let Some(gpu_state) = self.gpu_state.as_ref() {
+                                    self.world.upload_world(&gpu_state.queue, &gpu_state.gpu_world);
+                                }
+                            }
+
+                            if key == KeyCode::KeyI {
+                                let dist = 2.0;
+                                let spawn_pos = self.world.player.position + self.world.player.forward * dist;
+
+                                self.world.add_brush(world::Brush {
+                                    pos: spawn_pos,
+                                    kind: world::KIND_SPHERE,
+                                    scale: math::Vec3::new(0.5, 0.5, 0.5),
+                                    material: world::MAT_CONCRETE,
+                                    rot: math::Quat::IDENTITY,
+                                    op: world::OP_ADD,
+                                    _pad: [0; 3],
+                                });
+
+                                if let Some(gpu_state) = self.gpu_state.as_ref() {
+                                    self.world.upload_world(&gpu_state.queue, &gpu_state.gpu_world);
+                                }
+                            }
+
+                            if key == KeyCode::KeyP {
+                                let dist = 5.0;
+                                let spawn_pos = self.world.player.position + self.world.player.forward * dist;
+                                
+                                let q_yaw = math::Quat::from_rotation_y(self.world.player.yaw.to_radians());
+                                let q_pitch = math::Quat::from_rotation_x(-self.world.player.pitch.to_radians());
+                                let rot = q_yaw * q_pitch;
+
+                                self.world.add_brush(world::Brush {
+                                    pos: spawn_pos,
+                                    kind: world::KIND_CYLINDER,
+                                    scale: math::Vec3::new(0.8, 0.8, 10.0),
+                                    material: world::MAT_CONCRETE,
+                                    rot,
+                                    op: world::OP_SUB,
+                                    _pad: [0; 3],
+                                });
+
+                                if let Some(gpu_state) = self.gpu_state.as_ref() {
+                                    self.world.upload_world(&gpu_state.queue, &gpu_state.gpu_world);
+                                }
+                            }
+                        }
+                        self.key_down.insert(key);
+                    }
+                    ElementState::Released => {
+                        self.key_down.remove(&key);
+                    }
                 }
             }
 
