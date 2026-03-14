@@ -69,7 +69,6 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
     out.clip_position = vec4<f32>(x, y, 0.0, 1.0);
     out.uv = vec2<f32>(x, y);
 
-    // Calculate ray direction at this vertex
     out.ray_dir =
         out.uv.x * uniforms.aspect_ratio * player.right +
         out.uv.y * player.up +
@@ -96,18 +95,16 @@ fn sd_cylinder(p: vec3<f32>, h: f32, r: f32) -> f32 {
 
 fn sdf_brush(p_world: vec3<f32>, brush_idx: u32) -> f32 {
     let b = brushes[brush_idx];
-
-    // Transform world point to local space (but keep world scale for the SDF)
     let p_rel = p_world - b.pos;
     let q_inv = vec4<f32>(-b.rot.xyz, b.rot.w);
     let p_local = qrot(q_inv, p_rel);
 
     var d = 1e10;
-    if (b.kind == 0u) { // BOX
+    if (b.kind == 0u) {
         d = sd_box(p_local, b.scale * 0.5);
-    } else if (b.kind == 1u) { // CYLINDER
+    } else if (b.kind == 1u) {
         d = sd_cylinder(p_local, b.scale.z * 0.5, b.scale.x * 0.5);
-    } else if (b.kind == 2u) { // SPHERE
+    } else if (b.kind == 2u) {
         d = length(p_local) - b.scale.x * 0.5;
     }
 
@@ -129,14 +126,13 @@ fn sdf_at_leaf(p: vec3<f32>, node: OctreeNode) -> f32 {
             d = d_brush;
             found = true;
         } else {
-            if (op == 0u) { // ADD
+            if (op == 0u) {
                 d = min(d, d_brush);
-            } else { // SUB
+            } else {
                 d = max(d, -d_brush);
             }
         }
     }
-
     return d;
 }
 
@@ -164,7 +160,8 @@ struct StackNode {
     idx: u32,
     min: vec3<f32>,
     size: f32,
-    t_min: f32,
+    t0: f32,
+    t1: f32,
 };
 
 @fragment
@@ -173,7 +170,13 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let rd = normalize(in.ray_dir);
     let inv_rd = 1.0 / rd;
 
-    var stack: array<StackNode, 16>;
+    // Ray octant mask forRevelles algorithm
+    var a = 0u;
+    if (rd.x < 0.0) { a |= 1u; }
+    if (rd.y < 0.0) { a |= 2u; }
+    if (rd.z < 0.0) { a |= 4u; }
+
+    var stack: array<StackNode, 24>;
     var stack_ptr = 0;
 
     let root_hit = intersect_aabb(ro, inv_rd, root.min, root.min + root.size);
@@ -182,7 +185,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         return vec4<f32>(sky, 1.0);
     }
 
-    stack[stack_ptr] = StackNode(0u, root.min, root.size, max(root_hit.x, 0.0));
+    stack[stack_ptr] = StackNode(0u, root.min, root.size, max(root_hit.x, 0.0), root_hit.y);
     stack_ptr++;
 
     while (stack_ptr > 0) {
@@ -192,9 +195,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
         if (node.child_base_idx == 0u) {
             // Leaf: sphere trace
-            let node_hit = intersect_aabb(ro, inv_rd, sn.min, sn.min + sn.size);
-            var t = max(sn.t_min, 0.0);
-            let t_end = node_hit.y;
+            var t = sn.t0;
+            let t_end = sn.t1;
 
             if (node.brush_count > 0u) {
                 while (t < t_end) {
@@ -217,29 +219,55 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
                 }
             }
         } else {
-            // Internal node: push children in approximate distance order
+            // Internal node: Parametric traversal (visit children in order)
             let child_size = sn.size * 0.5;
+            let tm = (sn.min + child_size - ro) * inv_rd;
             
-            // Front-to-back heuristic: decide which axes to flip based on ray direction
-            let first = select(vec3<u32>(0u), vec3<u32>(1u), rd < vec3<f32>(0.0));
+            // Push children that are hit, in reverse order (to pop front-to-back)
+            // Logic based on Revelles' algorithm: visit current child, then find exit plane
+            var curr_t = sn.t0;
+            let t_end = sn.t1;
             
-            for (var i = 7; i >= 0; i--) {
-                // Determine child index by XORing with ray direction sign
-                let child_idx_raw = u32(i);
-                let child_idx = child_idx_raw ^ (first.x | (first.y << 1u) | (first.z << 2u));
+            // To simplify iterative WGSL implementation, we calculate the sequence of children hit
+            // and push them onto the stack in reverse order.
+            var hit_children: array<u32, 4>;
+            var hit_t0: array<f32, 4>;
+            var hit_t1: array<f32, 4>;
+            var hit_count = 0;
+            
+            var c = 0u;
+            if (tm.x < curr_t) { c |= 1u; }
+            if (tm.y < curr_t) { c |= 2u; }
+            if (tm.z < curr_t) { c |= 4u; }
+            
+            while (curr_t < t_end && hit_count < 4) {
+                let tx = select(tm.x, 1e10, (c & 1u) != 0u);
+                let ty = select(tm.y, 1e10, (c & 2u) != 0u);
+                let tz = select(tm.z, 1e10, (c & 4u) != 0u);
+                let next_t = min(t_end, min(tx, min(ty, tz)));
                 
+                hit_children[hit_count] = c;
+                hit_t0[hit_count] = curr_t;
+                hit_t1[hit_count] = next_t;
+                hit_count++;
+                
+                if (next_t >= t_end) { break; }
+                
+                if (next_t == tm.x) { c |= 1u; }
+                else if (next_t == tm.y) { c |= 2u; }
+                else { c |= 4u; }
+                curr_t = next_t;
+            }
+            
+            for (var i = hit_count - 1; i >= 0; i--) {
+                let child_idx_local = hit_children[i] ^ a;
                 let offset = vec3<f32>(
-                    f32(child_idx & 1u) * child_size,
-                    f32((child_idx >> 1u) & 1u) * child_size,
-                    f32((child_idx >> 2u) & 1u) * child_size
+                    f32(child_idx_local & 1u) * child_size,
+                    f32((child_idx_local >> 1u) & 1u) * child_size,
+                    f32((child_idx_local >> 2u) & 1u) * child_size
                 );
-                let c_min = sn.min + offset;
-                let c_hit = intersect_aabb(ro, inv_rd, c_min, c_min + child_size);
-                
-                if (c_hit.y >= 0.0 && c_hit.x <= c_hit.y && c_hit.y >= sn.t_min) {
-                    stack[stack_ptr] = StackNode(node.child_base_idx + child_idx, c_min, child_size, max(c_hit.x, 0.0));
-                    stack_ptr++;
-                }
+                stack[stack_ptr] = StackNode(node.child_base_idx + child_idx_local, sn.min + offset, child_size, hit_t0[i], hit_t1[i]);
+                stack_ptr++;
             }
         }
     }

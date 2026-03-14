@@ -176,9 +176,9 @@ impl ApplicationHandler for App
                             }
 
                             if key == KeyCode::KeyP {
-                                let dist = 5.0;
+                                let dist = 2.0;
                                 let spawn_pos = self.world.player.position + self.world.player.forward * dist;
-                                
+
                                 let q_yaw = math::Quat::from_rotation_y(self.world.player.yaw.to_radians());
                                 let q_pitch = math::Quat::from_rotation_x(-self.world.player.pitch.to_radians());
                                 let rot = q_yaw * q_pitch;
@@ -186,7 +186,7 @@ impl ApplicationHandler for App
                                 self.world.add_brush(world::Brush {
                                     pos: spawn_pos,
                                     kind: world::KIND_CYLINDER,
-                                    scale: math::Vec3::new(0.8, 0.8, 10.0),
+                                    scale: math::Vec3::new(0.8, 0.8, 6.0),
                                     material: world::MAT_CONCRETE,
                                     rot,
                                     op: world::OP_SUB,
