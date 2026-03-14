@@ -163,7 +163,7 @@ impl World
 
         // Add a default floor brush
         world.add_brush(Brush {
-            pos: Vec3::new(128.0, 0.0, 128.0),
+            pos: Vec3::new(128.0, -0.1, 128.0),
             kind: KIND_BOX,
             scale: Vec3::new(40.0, 0.2, 40.0),
             material: MAT_CONCRETE,
