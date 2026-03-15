@@ -1,0 +1,9 @@
+This is a simple game engine / construction game based on signed
+distance fields. To get more context, read @src.
+
+Rules when editing the code:
+- Do not remove comments
+- Do not undo changes made by the user
+- Respect existing styling around curly braces and variable names
+- Do not make changes not requested by the user
+- Add brief comments troughout the code, one or two lines, to explain the logic of the code you are writing

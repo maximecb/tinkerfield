@@ -14,6 +14,9 @@ pub const KIND_CONE: u32 = 3;
 pub const OP_ADD: u32 = 0;
 pub const OP_SUB: u32 = 1;
 
+/// Grid cell slot empty
+pub const SLOT_EMPTY: u16 = u16::MAX;
+
 /// Materials
 pub const MAT_CONCRETE: u32 = 0;
 pub const MAT_METAL: u32 = 1;
@@ -110,7 +113,7 @@ impl Player
 }
 
 /// Maximum number of brushes in our game world
-pub const MAX_BRUSHES: usize = u16::MAX as usize;
+pub const MAX_BRUSHES: usize = (u16::MAX - 1) as usize;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -224,7 +227,7 @@ impl World
     }
 
     /// Add a brush to the world grid
-    pub fn add_brush(&mut self, brush: Brush) -> Option<u16>
+    pub fn add_brush(&mut self, brush: Brush) -> u16
     {
         let index = if let Some(free_idx) = self.free_indices.pop() {
             self.brushes[free_idx as usize] = brush;
@@ -232,7 +235,7 @@ impl World
         } else {
             let idx = self.brushes.len() as u16;
             if idx as usize >= MAX_BRUSHES {
-                return None;
+                return u16::MAX;
             }
             self.brushes.push(brush);
             idx
@@ -242,7 +245,7 @@ impl World
 
         println!("World objects: {}", self.brushes.len() - self.free_indices.len());
 
-        Some(index)
+        index
     }
 
     pub fn rebuild_grid(&mut self)
@@ -253,7 +256,6 @@ impl World
         let mut world_min = Vec3::new(f32::INFINITY, f32::INFINITY, f32::INFINITY);
         let mut world_max = Vec3::new(f32::NEG_INFINITY, f32::NEG_INFINITY, f32::NEG_INFINITY);
 
-        // Compute world min/max extents
         let mut active_indices = Vec::with_capacity(self.brushes.len());
         for i in 0..self.brushes.len() {
             if self.free_indices.contains(&(i as u16)) {
@@ -306,8 +308,12 @@ impl World
                     for x in x_min..=x_max {
                         let c_idx = ((y * self.grid_size[2] + z) * self.grid_size[0] + x) as usize;
                         let count = self.grid[c_idx] & 0xFF;
-                        if count < u8::MAX.into() {
-                            self.grid[c_idx] += 1;
+
+                        // Only count OP_SUB if there is already something in the cell
+                        if brush.op != OP_SUB || count > 0 {
+                            if count < u8::MAX.into() {
+                                self.grid[c_idx] += 1;
+                            }
                         }
                     }
                 }
@@ -347,9 +353,13 @@ impl World
                         let offset = cell_info >> 8;
                         let max_n = cell_info & 0xFF;
                         let n = current_offset[c_idx];
-                        if n < max_n {
-                            self.grid_indices[offset as usize + n as usize] = idx;
-                            current_offset[c_idx] += 1;
+
+                        // Only add OP_SUB if there's already something in the cell
+                        if brush.op != OP_SUB || n > 0 {
+                            if n < max_n {
+                                self.grid_indices[offset as usize + n as usize] = idx;
+                                current_offset[c_idx] += 1;
+                            }
                         }
                     }
                 }
