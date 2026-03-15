@@ -1,6 +1,7 @@
 struct Uniforms {
     time: f32,
     aspect_ratio: f32,
+    pixel_size_at_1m: f32,
 };
 
 struct Brush {
@@ -203,7 +204,11 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
             while (t < t_boundary - 0.001) {
                 let p = ro + rd * t;
                 let d = sdf_at_cell(p, cell_idx);
-                if (d < 0.001) {
+
+                // Calculate epsilon as 1/2 or 1/4 of the pixel size at distance t
+                let epsilon = t * uniforms.pixel_size_at_1m * 0.125;
+
+                if (d < epsilon) {
                     let n = get_normal(p, cell_idx);
                     let light_dir = normalize(vec3<f32>(0.85, 1.0, -0.7));
                     let diff = max(dot(n, light_dir), 0.0);
@@ -213,7 +218,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
                     let color = vec3<f32>(0.4, 0.5, 0.7) * (diff + ambient) + vec3<f32>(0.4) * spec;
                     return vec4<f32>(color, 1.0);
                 }
-                t += max(d, 0.001);
+                t += max(d, epsilon);
             }
         }
 

@@ -184,7 +184,7 @@ impl ApplicationHandler for App
 
                     self.world.upload_player(&gpu_state.queue, &gpu_state.gpu_world);
 
-                    match gpu_state.render(&self.start_time) {
+                    match gpu_state.render(&self.start_time, self.world.player.focal_length) {
                         Ok(_) => {}
                         Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
                         Err(e) => eprintln!("{:?}", e),

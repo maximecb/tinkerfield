@@ -5,5 +5,5 @@ Rules when editing the code:
 - Do not remove comments
 - Do not undo changes made by the user
 - Respect existing styling around curly braces and variable names
-- Do not make changes not requested by the user
+- Be careful when making edits to avoid undoing changes made by the user
 - Add brief comments troughout the code, one or two lines, to explain the logic of the code you are writing
