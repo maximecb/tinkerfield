@@ -378,6 +378,7 @@ impl World
     pub fn upload_world(&self, queue: &wgpu::Queue, gpu: &GPUWorld)
     {
         let start = Instant::now();
+        let mut total_bytes = 0;
 
         let uniforms = WorldUniforms {
             grid_min: self.grid_min,
@@ -387,20 +388,29 @@ impl World
             _pad: [0; 2],
         };
         queue.write_buffer(&gpu.world_uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
+        total_bytes += std::mem::size_of::<WorldUniforms>();
 
         if !self.brushes.is_empty() {
+            let bytes = self.brushes.len() * std::mem::size_of::<Brush>();
             queue.write_buffer(&gpu.brush_buffer, 0, bytemuck::cast_slice(&self.brushes));
+            total_bytes += bytes;
         }
 
         if !self.grid.is_empty() {
+            let bytes = self.grid.len() * std::mem::size_of::<u32>();
             queue.write_buffer(&gpu.grid_buffer, 0, bytemuck::cast_slice(&self.grid));
+            total_bytes += bytes;
         }
 
         if !self.grid_indices.is_empty() {
+            let bytes = self.grid_indices.len() * std::mem::size_of::<u16>();
             queue.write_buffer(&gpu.index_buffer, 0, bytemuck::cast_slice(&self.grid_indices));
+            total_bytes += bytes;
         }
 
         let elapsed = start.elapsed();
-        println!("World upload time: {:.2}ms", elapsed.as_secs_f32() * 1000.0);
+        println!("World upload: {:.2}MB, {:.2}ms",
+            total_bytes as f32 / (1024.0 * 1024.0),
+            elapsed.as_secs_f32() * 1000.0);
     }
 }
