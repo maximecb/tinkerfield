@@ -155,7 +155,7 @@ impl ApplicationHandler for App
                             self.world.add_brush(world::Brush {
                                 pos,
                                 kind: world::KIND_CYLINDER,
-                                scale: math::Vec3::new(1.0, 1.0, 6.0),
+                                scale: math::Vec3::new(1.0, 1.0, 8.0),
                                 material: world::MAT_METAL,
                                 rot,
                                 op: world::OP_SUB,

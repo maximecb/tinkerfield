@@ -143,7 +143,7 @@ fn sdf_at_cell(p: vec3<f32>, cell_idx: u32) -> f32 {
 }
 
 fn get_normal(p: vec3<f32>, cell_idx: u32) -> vec3<f32> {
-    let e = vec2<f32>(1.0, -1.0) * 0.00005;
+    let e = vec2<f32>(1.0, -1.0) * 0.00001;
     return normalize(
         e.xyy * sdf_at_cell(p + e.xyy, cell_idx) +
         e.yyx * sdf_at_cell(p + e.yyx, cell_idx) +
@@ -205,7 +205,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
                 let d = sdf_at_cell(p, cell_idx);
                 if (d < 0.001) {
                     let n = get_normal(p, cell_idx);
-                    let light_dir = normalize(vec3<f32>(0.8, 1.0, -0.7));
+                    let light_dir = normalize(vec3<f32>(0.85, 1.0, -0.7));
                     let diff = max(dot(n, light_dir), 0.0);
                     let half_dir = normalize(light_dir - rd);
                     let spec = pow(max(dot(n, half_dir), 0.0), 32.0);
