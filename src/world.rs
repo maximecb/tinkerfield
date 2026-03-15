@@ -129,6 +129,9 @@ pub struct WorldUniforms
 
 pub struct World
 {
+    /// List of brushes in the world
+    /// Note that the order in which brushes are added matters,
+    /// Because some brushes subtract from the world (OP_SUB)
     brushes: Vec<Brush>,
     free_indices: Vec<u16>,
 

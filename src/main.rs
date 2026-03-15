@@ -133,7 +133,7 @@ impl ApplicationHandler for App
                         self.key_down.insert(key);
 
                         if key == KeyCode::KeyO {
-                            let pos = self.world.player.position + self.world.player.forward * 5.0;
+                            let pos = self.world.player.position + self.world.player.forward * 3.0;
                             self.world.add_brush(world::Brush {
                                 pos,
                                 kind: world::KIND_BOX,
@@ -149,7 +149,7 @@ impl ApplicationHandler for App
                         }
 
                         if key == KeyCode::KeyP {
-                            let pos = self.world.player.position + self.world.player.forward * 3.0;
+                            let pos = self.world.player.position + self.world.player.forward * 2.5;
                             let rot = math::Quat::from_rotation_y(self.world.player.yaw.to_radians()) *
                                       math::Quat::from_rotation_x(-self.world.player.pitch.to_radians());
                             self.world.add_brush(world::Brush {

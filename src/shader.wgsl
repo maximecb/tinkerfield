@@ -205,9 +205,12 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
                 let d = sdf_at_cell(p, cell_idx);
                 if (d < 0.001) {
                     let n = get_normal(p, cell_idx);
-                    let light_dir = normalize(vec3<f32>(0.7, 1.0, -0.85));
-                    let diff = max(dot(n, light_dir), 0.2);
-                    let color = vec3<f32>(0.4, 0.5, 0.7) * diff;
+                    let light_dir = normalize(vec3<f32>(0.8, 1.0, -0.7));
+                    let diff = max(dot(n, light_dir), 0.0);
+                    let half_dir = normalize(light_dir - rd);
+                    let spec = pow(max(dot(n, half_dir), 0.0), 32.0);
+                    let ambient = 0.15;
+                    let color = vec3<f32>(0.4, 0.5, 0.7) * (diff + ambient) + vec3<f32>(0.4) * spec;
                     return vec4<f32>(color, 1.0);
                 }
                 t += max(d, 0.001);
