@@ -46,16 +46,6 @@ impl App
         let dt = self.last_update.elapsed().as_secs_f32();
         self.last_update = Instant::now();
 
-        // Update FPS counter
-        self.frame_count += 1;
-        let fps_elapsed = self.last_fps_print.elapsed();
-        if fps_elapsed.as_secs_f32() >= 1.0 {
-            let fps = self.frame_count as f32 / fps_elapsed.as_secs_f32();
-            println!("FPS: {:.2}", fps);
-            self.frame_count = 0;
-            self.last_fps_print = Instant::now();
-        }
-
         let move_speed = 10.0;
         let mut fwd_dist = 0.0;
         let mut side_dist = 0.0;
@@ -179,9 +169,19 @@ impl ApplicationHandler for App
             }
 
             WindowEvent::RedrawRequested => {
-                self.update();
-                if let Some(gpu_state) = self.gpu_state.as_mut() {
+                // Update FPS counter
+                self.frame_count += 1;
+                let fps_elapsed = self.last_fps_print.elapsed();
+                if fps_elapsed.as_secs_f32() >= 1.0 {
+                    let fps = self.frame_count as f32 / fps_elapsed.as_secs_f32();
+                    println!("FPS: {:.2}", fps);
+                    self.frame_count = 0;
+                    self.last_fps_print = Instant::now();
+                }
 
+                self.update();
+
+                if let Some(gpu_state) = self.gpu_state.as_mut() {
                     self.world.upload_player(&gpu_state.queue, &gpu_state.gpu_world);
 
                     match gpu_state.render(&self.start_time, self.world.player.focal_length) {
