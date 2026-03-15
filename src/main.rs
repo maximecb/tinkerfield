@@ -43,6 +43,7 @@ impl App
 
     fn update(&mut self)
     {
+        // Compute delta time since last update
         let dt = self.last_update.elapsed().as_secs_f32();
         self.last_update = Instant::now();
 
@@ -65,6 +66,48 @@ impl App
 
         if fwd_dist != 0.0 || side_dist != 0.0 {
             self.world.move_player(fwd_dist, side_dist);
+        }
+    }
+
+    fn key_press(&mut self, key: KeyCode)
+    {
+        use KeyCode::*;
+        match key {
+            KeyO => {
+                let pos = self.world.player.position + self.world.player.forward * 3.0;
+                self.world.add_brush(world::Brush {
+                    pos,
+                    kind: world::KIND_BOX,
+                    scale: math::Vec3::new(2.0, 2.0, 2.0),
+                    material: world::MAT_WOOD,
+                    rot: math::Quat::IDENTITY,
+                    op: world::OP_ADD,
+                    _pad: [0; 3],
+                });
+                if let Some(gpu_state) = &self.gpu_state {
+                    self.world.upload_world(&gpu_state.queue, &gpu_state.gpu_world);
+                }
+            }
+
+            KeyP => {
+                let pos = self.world.player.position + self.world.player.forward * 2.5;
+                let rot = math::Quat::from_rotation_y(self.world.player.yaw.to_radians()) *
+                            math::Quat::from_rotation_x(-self.world.player.pitch.to_radians());
+                self.world.add_brush(world::Brush {
+                    pos,
+                    kind: world::KIND_CYLINDER,
+                    scale: math::Vec3::new(1.0, 1.0, 8.0),
+                    material: world::MAT_METAL,
+                    rot,
+                    op: world::OP_SUB,
+                    _pad: [0; 3],
+                });
+                if let Some(gpu_state) = &self.gpu_state {
+                    self.world.upload_world(&gpu_state.queue, &gpu_state.gpu_world);
+                }
+            }
+
+            _ => {}
         }
     }
 }
@@ -121,42 +164,11 @@ impl ApplicationHandler for App
                 match state {
                     ElementState::Pressed => {
                         self.key_down.insert(key);
-
-                        if key == KeyCode::KeyO {
-                            let pos = self.world.player.position + self.world.player.forward * 3.0;
-                            self.world.add_brush(world::Brush {
-                                pos,
-                                kind: world::KIND_BOX,
-                                scale: math::Vec3::new(2.0, 2.0, 2.0),
-                                material: world::MAT_WOOD,
-                                rot: math::Quat::IDENTITY,
-                                op: world::OP_ADD,
-                                _pad: [0; 3],
-                            });
-                            if let Some(gpu_state) = &self.gpu_state {
-                                self.world.upload_world(&gpu_state.queue, &gpu_state.gpu_world);
-                            }
-                        }
-
-                        if key == KeyCode::KeyP {
-                            let pos = self.world.player.position + self.world.player.forward * 2.5;
-                            let rot = math::Quat::from_rotation_y(self.world.player.yaw.to_radians()) *
-                                      math::Quat::from_rotation_x(-self.world.player.pitch.to_radians());
-                            self.world.add_brush(world::Brush {
-                                pos,
-                                kind: world::KIND_CYLINDER,
-                                scale: math::Vec3::new(1.0, 1.0, 8.0),
-                                material: world::MAT_METAL,
-                                rot,
-                                op: world::OP_SUB,
-                                _pad: [0; 3],
-                            });
-                            if let Some(gpu_state) = &self.gpu_state {
-                                self.world.upload_world(&gpu_state.queue, &gpu_state.gpu_world);
-                            }
-                        }
+                        self.key_press(key);
                     }
-                    ElementState::Released => { self.key_down.remove(&key); }
+                    ElementState::Released => {
+                        self.key_down.remove(&key);
+                    }
                 }
             }
 
