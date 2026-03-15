@@ -14,9 +14,6 @@ pub const KIND_CONE: u32 = 3;
 pub const OP_ADD: u32 = 0;
 pub const OP_SUB: u32 = 1;
 
-/// Grid cell slot empty
-pub const SLOT_EMPTY: u16 = u16::MAX;
-
 /// Materials
 pub const MAT_CONCRETE: u32 = 0;
 pub const MAT_METAL: u32 = 1;
@@ -113,14 +110,19 @@ impl Player
 }
 
 /// Maximum number of brushes in our game world
-pub const MAX_BRUSHES: usize = (u16::MAX - 1) as usize;
+pub const MAX_BRUSHES: usize = u16::MAX as usize;
 
-/// 256 x 256 x 64 x (32 * 2) = 256MB
-pub const GRID_W: usize = 256;
-pub const GRID_D: usize = 256;
-pub const GRID_H: usize = 64;
-pub const GRID_C: usize = 32;
-pub const GRID_COUNT: usize = GRID_W * GRID_D * GRID_H * GRID_C;
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct WorldUniforms
+{
+    pub grid_min: Vec3,
+    pub grid_size_x: u32,
+
+    pub grid_size_y: u32,
+    pub grid_size_z: u32,
+    pub _pad: [u32; 2],
+}
 
 pub struct World
 {
@@ -130,8 +132,14 @@ pub struct World
     /// The world uses a metric coordinate system.
     /// The grid is a 3D array of cells such that each cell
     /// is 1x1x1 unit in size, with 1 unit = 1 meter.
-    /// Each cell contains a list of up to 32 brush indices (u16)
-    grid: Box<[u16]>,
+    /// Each cell contains a u32 that stores an offset into the index buffer
+    /// and a count of brushes in that cell.
+    /// (offset << 8) | (count & 0xFF)
+    pub grid: Vec<u32>,
+    pub grid_indices: Vec<u16>,
+
+    pub grid_min: Vec3,
+    pub grid_size: [u32; 3],
 
     pub player: Player,
 }
@@ -143,9 +151,12 @@ impl World
         let mut world = Self {
             brushes: Vec::with_capacity(1024),
             free_indices: Vec::new(),
-            grid: vec![SLOT_EMPTY; GRID_COUNT].into_boxed_slice(),
+            grid: Vec::new(),
+            grid_indices: Vec::new(),
+            grid_min: Vec3::new(0.0, 0.0, 0.0),
+            grid_size: [0, 0, 0],
             player: Player {
-                position: Vec3::new(128.0, 1.8, 128.0),
+                position: Vec3::new(0.0, 1.8, 0.0),
                 focal_length: 1.5,
                 forward: Vec3::new(0.0, 0.0, 1.0),
                 _pad1: 0.0,
@@ -163,7 +174,7 @@ impl World
 
         // Add a default floor brush
         world.add_brush(Brush {
-            pos: Vec3::new(128.0, 0.0, 128.0),
+            pos: Vec3::new(0.0, -0.1, 0.0),
             kind: KIND_BOX,
             scale: Vec3::new(40.0, 0.2, 40.0),
             material: MAT_CONCRETE,
@@ -197,46 +208,6 @@ impl World
             return;
         }
 
-        let brush = self.brushes[index as usize];
-        let (min, max) = brush.get_aabb();
-
-        // Grid bounds
-        let x_min = (min.x.floor() as i32).max(0).min(GRID_W as i32 - 1) as usize;
-        let x_max = (max.x.ceil() as i32).max(0).min(GRID_W as i32 - 1) as usize;
-        let y_min = (min.y.floor() as i32).max(0).min(GRID_H as i32 - 1) as usize;
-        let y_max = (max.y.ceil() as i32).max(0).min(GRID_H as i32 - 1) as usize;
-        let z_min = (min.z.floor() as i32).max(0).min(GRID_D as i32 - 1) as usize;
-        let z_max = (max.z.ceil() as i32).max(0).min(GRID_D as i32 - 1) as usize;
-
-        for y in y_min..=y_max {
-            for z in z_min..=z_max {
-                for x in x_min..=x_max {
-                    let cell_idx = ((y * GRID_D + z) * GRID_W + x) * GRID_C;
-
-                    // Find and remove from slot list
-                    let mut found_at = None;
-                    for slot in 0..GRID_C {
-                        if self.grid[cell_idx + slot] == index {
-                            found_at = Some(slot);
-                            break;
-                        }
-                    }
-
-                    if let Some(start_slot) = found_at {
-                        // Shift left
-                        for slot in start_slot..GRID_C - 1 {
-                            self.grid[cell_idx + slot] = self.grid[cell_idx + slot + 1];
-                            if self.grid[cell_idx + slot] == SLOT_EMPTY {
-                                break;
-                            }
-                        }
-                        // Last slot always becomes empty if we shifted
-                        self.grid[cell_idx + GRID_C - 1] = SLOT_EMPTY;
-                    }
-                }
-            }
-        }
-
         // Nullify the brush data
         self.brushes[index as usize] = Brush {
             pos: Vec3::new(0.0, 0.0, 0.0),
@@ -249,10 +220,11 @@ impl World
         };
 
         self.free_indices.push(index);
+        self.rebuild_grid();
     }
 
     /// Add a brush to the world grid
-    pub fn add_brush(&mut self, brush: Brush) -> u16
+    pub fn add_brush(&mut self, brush: Brush) -> Option<u16>
     {
         let index = if let Some(free_idx) = self.free_indices.pop() {
             self.brushes[free_idx as usize] = brush;
@@ -260,44 +232,140 @@ impl World
         } else {
             let idx = self.brushes.len() as u16;
             if idx as usize >= MAX_BRUSHES {
-                return u16::MAX;
+                return None;
             }
             self.brushes.push(brush);
             idx
         };
 
-        // Compute extents of this object in the grid
-        let (min, max) = brush.get_aabb();
-        let x_min = (min.x.floor() as i32).max(0).min(GRID_W as i32 - 1) as usize;
-        let x_max = (max.x.ceil() as i32).max(0).min(GRID_W as i32 - 1) as usize;
-        let y_min = (min.y.floor() as i32).max(0).min(GRID_H as i32 - 1) as usize;
-        let y_max = (max.y.ceil() as i32).max(0).min(GRID_H as i32 - 1) as usize;
-        let z_min = (min.z.floor() as i32).max(0).min(GRID_D as i32 - 1) as usize;
-        let z_max = (max.z.ceil() as i32).max(0).min(GRID_D as i32 - 1) as usize;
+        self.rebuild_grid();
 
-        for y in y_min..=y_max {
-            for z in z_min..=z_max {
-                for x in x_min..=x_max {
-                    let cell_idx = ((y * GRID_D + z) * GRID_W + x) * GRID_C;
+        println!("World objects: {}", self.brushes.len() - self.free_indices.len());
 
-                    // If this is a subtraction brush, don't add it to empty cells
-                    if brush.op == OP_SUB && self.grid[cell_idx] == SLOT_EMPTY {
-                        continue;
-                    }
+        Some(index)
+    }
 
-                    for slot in 0..GRID_C {
-                        if self.grid[cell_idx + slot] == SLOT_EMPTY {
-                            self.grid[cell_idx + slot] = index;
-                            break;
+    pub fn rebuild_grid(&mut self)
+    {
+        let start = Instant::now();
+
+        // 1. Find AABB of all active brushes
+        let mut world_min = Vec3::new(f32::INFINITY, f32::INFINITY, f32::INFINITY);
+        let mut world_max = Vec3::new(f32::NEG_INFINITY, f32::NEG_INFINITY, f32::NEG_INFINITY);
+
+        // Compute world min/max extents
+        let mut active_indices = Vec::with_capacity(self.brushes.len());
+        for i in 0..self.brushes.len() {
+            if self.free_indices.contains(&(i as u16)) {
+                continue;
+            }
+            let (b_min, b_max) = self.brushes[i].get_aabb();
+            world_min = world_min.min(b_min);
+            world_max = world_max.max(b_max);
+            active_indices.push(i as u16);
+        }
+
+        if active_indices.is_empty() {
+            self.grid.clear();
+            self.grid_indices.clear();
+            self.grid_size = [0, 0, 0];
+            return;
+        }
+
+        // 2. Pad AABB and determine grid size
+        world_min -= Vec3::new(1.0, 1.0, 1.0);
+        world_max += Vec3::new(1.0, 1.0, 1.0);
+        self.grid_min = Vec3::new(world_min.x.floor(), world_min.y.floor(), world_min.z.floor());
+        let grid_max = Vec3::new(world_max.x.ceil(), world_max.y.ceil(), world_max.z.ceil());
+        let diff = grid_max - self.grid_min;
+        self.grid_size = [diff.x as u32, diff.y as u32, diff.z as u32];
+
+        // Sanity check for grid size
+        if self.grid_size[0] > 512 || self.grid_size[1] > 512 || self.grid_size[2] > 512 {
+             println!("Warning: grid size too large: {:?}", self.grid_size);
+        }
+
+        let count = (self.grid_size[0] * self.grid_size[1] * self.grid_size[2]) as usize;
+        self.grid.clear();
+        self.grid.resize(count, 0);
+
+        // 3. Count brushes per cell
+        for &idx in &active_indices {
+            let brush = &self.brushes[idx as usize];
+            let (b_min, b_max) = brush.get_aabb();
+
+            let x_min = ((b_min.x - self.grid_min.x).floor() as i32).max(0) as u32;
+            let x_max = ((b_max.x - self.grid_min.x).ceil() as i32).max(0).min(self.grid_size[0] as i32 - 1) as u32;
+            let y_min = ((b_min.y - self.grid_min.y).floor() as i32).max(0) as u32;
+            let y_max = ((b_max.y - self.grid_min.y).ceil() as i32).max(0).min(self.grid_size[1] as i32 - 1) as u32;
+            let z_min = ((b_min.z - self.grid_min.z).floor() as i32).max(0) as u32;
+            let z_max = ((b_max.z - self.grid_min.z).ceil() as i32).max(0).min(self.grid_size[2] as i32 - 1) as u32;
+
+            for y in y_min..=y_max {
+                for z in z_min..=z_max {
+                    for x in x_min..=x_max {
+                        let c_idx = ((y * self.grid_size[2] + z) * self.grid_size[0] + x) as usize;
+                        let count = self.grid[c_idx] & 0xFF;
+                        if count < u8::MAX.into() {
+                            self.grid[c_idx] += 1;
                         }
                     }
                 }
             }
         }
 
-        println!("World objects: {}", self.brushes.len() - self.free_indices.len());
+        // 4. Prefix sum to find offsets
+        let mut total_indices: usize = 0;
+        for i in 0..count {
+            let n = (self.grid[i] & 0xFF) as usize;
+            let offset = total_indices;
+            self.grid[i] = ((offset as u32) << 8) | (n as u32);
+            total_indices += n;
+        }
 
-        index
+        self.grid_indices.clear();
+        self.grid_indices.resize(total_indices, 0);
+        let mut current_offset = vec![0u32; count];
+
+        // 5. Fill index buffer
+        for &idx in &active_indices {
+            let brush = &self.brushes[idx as usize];
+            let (b_min, b_max) = brush.get_aabb();
+
+            let x_min = ((b_min.x - self.grid_min.x).floor() as i32).max(0) as u32;
+            let x_max = ((b_max.x - self.grid_min.x).ceil() as i32).max(0).min(self.grid_size[0] as i32 - 1) as u32;
+            let y_min = ((b_min.y - self.grid_min.y).floor() as i32).max(0) as u32;
+            let y_max = ((b_max.y - self.grid_min.y).ceil() as i32).max(0).min(self.grid_size[1] as i32 - 1) as u32;
+            let z_min = ((b_min.z - self.grid_min.z).floor() as i32).max(0) as u32;
+            let z_max = ((b_max.z - self.grid_min.z).ceil() as i32).max(0).min(self.grid_size[2] as i32 - 1) as u32;
+
+            for y in y_min..=y_max {
+                for z in z_min..=z_max {
+                    for x in x_min..=x_max {
+                        let c_idx = ((y * self.grid_size[2] + z) * self.grid_size[0] + x) as usize;
+                        let cell_info = self.grid[c_idx];
+                        let offset = cell_info >> 8;
+                        let max_n = cell_info & 0xFF;
+                        let n = current_offset[c_idx];
+                        if n < max_n {
+                            self.grid_indices[offset as usize + n as usize] = idx;
+                            current_offset[c_idx] += 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        let elapsed = start.elapsed();
+        if self.grid_indices.len() % 2 != 0 {
+            self.grid_indices.push(0);
+        }
+
+        println!("Grid rebuild: {:.2}ms, {}x{}x{} ({} cells), {} indices",
+            elapsed.as_secs_f32() * 1000.0,
+            self.grid_size[0], self.grid_size[1], self.grid_size[2],
+            count, total_indices
+        );
     }
 
     /// Send player data to the GPU
@@ -310,10 +378,28 @@ impl World
     pub fn upload_world(&self, queue: &wgpu::Queue, gpu: &GPUWorld)
     {
         let start = Instant::now();
+
+        let uniforms = WorldUniforms {
+            grid_min: self.grid_min,
+            grid_size_x: self.grid_size[0],
+            grid_size_y: self.grid_size[1],
+            grid_size_z: self.grid_size[2],
+            _pad: [0; 2],
+        };
+        queue.write_buffer(&gpu.world_uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
+
         if !self.brushes.is_empty() {
             queue.write_buffer(&gpu.brush_buffer, 0, bytemuck::cast_slice(&self.brushes));
         }
-        queue.write_buffer(&gpu.grid_buffer, 0, bytemuck::cast_slice(self.grid.as_ref()));
+
+        if !self.grid.is_empty() {
+            queue.write_buffer(&gpu.grid_buffer, 0, bytemuck::cast_slice(&self.grid));
+        }
+
+        if !self.grid_indices.is_empty() {
+            queue.write_buffer(&gpu.index_buffer, 0, bytemuck::cast_slice(&self.grid_indices));
+        }
+
         let elapsed = start.elapsed();
         println!("World upload time: {:.2}ms", elapsed.as_secs_f32() * 1000.0);
     }

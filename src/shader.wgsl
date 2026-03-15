@@ -23,6 +23,13 @@ struct Player {
     _pad3: f32,
 };
 
+struct WorldUniforms {
+    grid_min: vec3<f32>,
+    grid_size_x: u32,
+    grid_size_y: u32,
+    grid_size_z: u32,
+};
+
 @group(0) @binding(0)
 var<uniform> uniforms: Uniforms;
 
@@ -30,16 +37,16 @@ var<uniform> uniforms: Uniforms;
 var<storage, read> brushes: array<Brush>;
 
 @group(1) @binding(1)
-var<storage, read> grid: array<u32>; // packed u16 indices, 2 per u32
+var<storage, read> grid: array<u32>; // (offset << 8) | count
 
 @group(1) @binding(2)
+var<storage, read> grid_indices: array<u32>; // packed u16 indices, 2 per u32
+
+@group(1) @binding(3)
 var<uniform> player: Player;
 
-const GRID_W: u32 = 256u;
-const GRID_D: u32 = 256u;
-const GRID_H: u32 = 64u;
-const GRID_C: u32 = 32u;
-const SLOT_EMPTY: u32 = 65535u;
+@group(1) @binding(4)
+var<uniform> world: WorldUniforms;
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
@@ -100,19 +107,23 @@ fn sdf_brush(p_world: vec3<f32>, brush_idx: u32) -> f32 {
     return d;
 }
 
+/// Unpack a u16 brush index from the grid_indices storage buffer.
+/// Each u32 word contains two u16 indices.
+fn get_grid_brush_index(idx: u32) -> u32 {
+    let word = grid_indices[idx / 2u];
+    return select(word & 0xFFFFu, word >> 16u, (idx % 2u) == 1u);
+}
+
 /// This function assumes we have valid grid coordinates
 fn sdf_at_cell(p: vec3<f32>, cell_idx: u32) -> f32 {
+    let cell_info = grid[cell_idx];
+    let offset = cell_info >> 8u;
+    let count = cell_info & 0xFFu;
+
     var d = 1e10;
     var found = false;
-    for (var i = 0u; i < GRID_C; i++) {
-        let word_idx = (cell_idx + i) / 2u;
-        let word = grid[word_idx];
-        let brush_idx = select(word & 0xFFFFu, word >> 16u, (i % 2u) == 1u);
-
-        if (brush_idx == SLOT_EMPTY) {
-            break;
-        }
-
+    for (var i = 0u; i < count; i++) {
+        let brush_idx = get_grid_brush_index(offset + i);
         let d_brush = sdf_brush(p, brush_idx);
         let op = brushes[brush_idx].op;
 
@@ -141,29 +152,53 @@ fn get_normal(p: vec3<f32>, cell_idx: u32) -> vec3<f32> {
     );
 }
 
+fn intersect_aabb(ro: vec3<f32>, rd: vec3<f32>, b_min: vec3<f32>, b_max: vec3<f32>) -> vec2<f32> {
+    let inv_rd = 1.0 / rd;
+    let t1 = (b_min - ro) * inv_rd;
+    let t2 = (b_max - ro) * inv_rd;
+    let t_min = min(t1, t2);
+    let t_max = max(t1, t2);
+    let t_near = max(t_min.x, max(t_min.y, t_min.z));
+    let t_far = min(t_max.x, min(t_max.y, t_max.z));
+    return vec2<f32>(t_near, t_far);
+}
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let ro = player.position;
     let rd = normalize(in.ray_dir);
 
+    let grid_size = vec3<f32>(f32(world.grid_size_x), f32(world.grid_size_y), f32(world.grid_size_z));
+    let t_hit = intersect_aabb(ro, rd, world.grid_min, world.grid_min + grid_size);
+
+    var t = max(t_hit.x, 0.0);
+    if (t > t_hit.y || t > 150.0) {
+        // Sky gradient
+        let sky = mix(vec3<f32>(0.5, 0.8, 1.0), vec3<f32>(0.1, 0.4, 0.9), in.uv.y * 0.5 + 0.5);
+        return vec4<f32>(sky, 1.0);
+    }
+
     let inv_rd = 1.0 / rd;
     let delta_t = abs(inv_rd);
     let step = vec3<i32>(sign(rd));
 
-    var ipos = vec3<i32>(floor(ro));
-    var t_max = (vec3<f32>(ipos) - ro + 0.5 + vec3<f32>(step) * 0.5) * inv_rd;
+    let p_start = ro + rd * (t + 0.001);
+    var ipos = vec3<i32>(floor(p_start - world.grid_min));
+    var t_max = (vec3<f32>(ipos) - (ro - world.grid_min) + 0.5 + vec3<f32>(step) * 0.5) * inv_rd;
 
-    var t = 0.0;
-    for (var i = 0; i < 128; i++) {
-        if (ipos.x < 0 || ipos.y < 0 || ipos.z < 0 || ipos.x >= i32(GRID_W) || ipos.y >= i32(GRID_H) || ipos.z >= i32(GRID_D)) {
+    for (var i = 0; i < 256; i++) {
+        if (ipos.x < 0 || ipos.y < 0 || ipos.z < 0 ||
+            ipos.x >= i32(world.grid_size_x) ||
+            ipos.y >= i32(world.grid_size_y) ||
+            ipos.z >= i32(world.grid_size_z)) {
             break;
         }
 
-        let cell_idx = ((u32(ipos.y) * GRID_D + u32(ipos.z)) * GRID_W + u32(ipos.x)) * GRID_C;
+        let cell_idx = (u32(ipos.y) * world.grid_size_z + u32(ipos.z)) * world.grid_size_x + u32(ipos.x);
         let t_boundary = min(t_max.x, min(t_max.y, t_max.z));
 
-        // Check if cell is potentially non-empty (first 2 slots)
-        if (grid[cell_idx / 2u] != 0xFFFFFFFFu) {
+        // Check if cell is potentially non-empty
+        if ((grid[cell_idx] & 0xFFu) > 0u) {
             // Sphere trace within this cell
             while (t < t_boundary - 0.001) {
                 let p = ro + rd * t;
@@ -200,7 +235,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
             }
         }
 
-        if (t > 150.0) { break; }
+        if (t > 150.0 || t > t_hit.y) { break; }
     }
 
     // Sky gradient

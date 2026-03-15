@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Instant;
 use winit::window::Window;
-use crate::world::{Brush, Player, MAX_BRUSHES, GRID_COUNT};
+use crate::world::{Brush, Player, MAX_BRUSHES, WorldUniforms};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -16,7 +16,9 @@ pub struct GPUWorld
 {
     pub brush_buffer: wgpu::Buffer,
     pub grid_buffer: wgpu::Buffer,
+    pub index_buffer: wgpu::Buffer,
     pub player_buffer: wgpu::Buffer,
+    pub world_uniform_buffer: wgpu::Buffer,
     pub bind_group_layout: wgpu::BindGroupLayout,
     pub bind_group: wgpu::BindGroup,
 }
@@ -32,9 +34,19 @@ impl GPUWorld
             mapped_at_creation: false,
         });
 
+        // Max grid size 512x512x512 * 4 bytes = 512MB
+        // But we'll use a more reasonable limit for now.
+        // Let's say 256MB for grid.
         let grid_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Grid Buffer"),
-            size: (GRID_COUNT * std::mem::size_of::<u16>()) as u64,
+            size: 256 * 1024 * 1024,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let index_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Index Buffer"),
+            size: 128 * 1024 * 1024,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -46,9 +58,17 @@ impl GPUWorld
             mapped_at_creation: false,
         });
 
+        let world_uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("World Uniform Buffer"),
+            size: std::mem::size_of::<WorldUniforms>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("World Bind Group Layout"),
             entries: &[
+                // Brushes
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::FRAGMENT,
@@ -59,6 +79,7 @@ impl GPUWorld
                     },
                     count: None,
                 },
+                // Grid
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStages::FRAGMENT,
@@ -69,9 +90,32 @@ impl GPUWorld
                     },
                     count: None,
                 },
+                // Indices
                 wgpu::BindGroupLayoutEntry {
                     binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                // Player
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
                     visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                // World Uniforms
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -96,7 +140,15 @@ impl GPUWorld
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
+                    resource: index_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
                     resource: player_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: world_uniform_buffer.as_entire_binding(),
                 },
             ],
         });
@@ -104,7 +156,9 @@ impl GPUWorld
         Self {
             brush_buffer,
             grid_buffer,
+            index_buffer,
             player_buffer,
+            world_uniform_buffer,
             bind_group_layout,
             bind_group,
         }
@@ -148,7 +202,7 @@ impl GPUState
                     required_features: wgpu::Features::empty(),
                     required_limits: wgpu::Limits {
                         max_storage_buffer_binding_size: 256 * 1024 * 1024,
-                        max_buffer_size: 256 * 1024 * 1024,
+                        max_buffer_size: 512 * 1024 * 1024,
                         ..wgpu::Limits::default()
                     },
                     memory_hints: wgpu::MemoryHints::default(),
