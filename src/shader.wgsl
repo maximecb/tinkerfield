@@ -77,8 +77,8 @@ fn qrot(q: vec4<f32>, v: vec3<f32>) -> vec3<f32> {
     return v + q.w * t + cross(qxyz, t);
 }
 
-fn sd_box(p: vec3<f32>, b: vec3<f32>) -> f32 {
-    let q = abs(p) - b;
+fn sd_box(p: vec3<f32>, size: vec3<f32>) -> f32 {
+    let q = abs(p) - size;
     return length(max(q, vec3<f32>(0.0))) + min(max(q.x, max(q.y, q.z)), 0.0);
 }
 
