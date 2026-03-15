@@ -129,7 +129,43 @@ impl ApplicationHandler for App
                 ..
             } => {
                 match state {
-                    ElementState::Pressed => { self.key_down.insert(key); }
+                    ElementState::Pressed => {
+                        self.key_down.insert(key);
+
+                        if key == KeyCode::KeyO {
+                            let pos = self.world.player.position + self.world.player.forward * 5.0;
+                            self.world.add_brush(world::Brush {
+                                pos,
+                                kind: world::KIND_BOX,
+                                scale: math::Vec3::new(2.0, 2.0, 2.0),
+                                material: world::MAT_WOOD,
+                                rot: math::Quat::IDENTITY,
+                                op: world::OP_ADD,
+                                _pad: [0; 3],
+                            });
+                            if let Some(gpu_state) = &self.gpu_state {
+                                self.world.upload_world(&gpu_state.queue, &gpu_state.gpu_world);
+                            }
+                        }
+
+                        if key == KeyCode::KeyP {
+                            let pos = self.world.player.position + self.world.player.forward * 3.0;
+                            let rot = math::Quat::from_rotation_y(self.world.player.yaw.to_radians()) *
+                                      math::Quat::from_rotation_x(-self.world.player.pitch.to_radians());
+                            self.world.add_brush(world::Brush {
+                                pos,
+                                kind: world::KIND_CYLINDER,
+                                scale: math::Vec3::new(1.0, 1.0, 6.0),
+                                material: world::MAT_METAL,
+                                rot,
+                                op: world::OP_SUB,
+                                _pad: [0; 3],
+                            });
+                            if let Some(gpu_state) = &self.gpu_state {
+                                self.world.upload_world(&gpu_state.queue, &gpu_state.gpu_world);
+                            }
+                        }
+                    }
                     ElementState::Released => { self.key_down.remove(&key); }
                 }
             }
