@@ -249,6 +249,9 @@ impl App
                     brush.pos.x += actual_delta.x * 0.5 * s_x;
                     brush.pos.z += actual_delta.z * 0.5 * s_z;
                     brush.pos.y += actual_delta.y * 0.5;
+                } else if brush.kind == world::KIND_CYLINDER || brush.kind == world::KIND_CONE {
+                    // For Cylinder/Cone, fix the base Y position when scaling along Y
+                    brush.pos.y += actual_delta.y * 0.5;
                 }
 
                 self.selected = Some(self.world.add_brush(brush));
