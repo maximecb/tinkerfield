@@ -14,6 +14,7 @@ mod world;
 mod math;
 mod gpu;
 
+#[derive(PartialEq)]
 enum EditMode
 {
     Position,
@@ -145,15 +146,73 @@ impl App
                 }
             }
 
-            KeyP => { self.edit_mode = EditMode::Position; }
-            KeyS => { self.edit_mode = EditMode::Scale; }
-            KeyR => { self.edit_mode = EditMode::Rotation; }
+            KeyP => {
+                println!("Position edit mode");
+                self.edit_mode = EditMode::Position;
+            }
+            KeyX => {
+                println!("Scale edit mode");
+                self.edit_mode = EditMode::Scale;
+            }
+            KeyR => {
+                println!("Rotation edit mode");
+                self.edit_mode = EditMode::Rotation;
+            }
+
+            // Scale the currently selected brush in EditMode::Scale
+            KeyI | KeyK | KeyJ | KeyL | KeyY | KeyH if self.edit_mode == EditMode::Scale => {
+                let Some(brush_id) = self.selected else { return; };
+
+                let mut brush = self.world.remove_brush(brush_id);
+                let player = &self.world.player;
+
+                let (axis_idx, delta) = match key {
+                    // Y/H always control the vertical Y axis
+                    KeyY => (1, 0.1),
+                    KeyH => (1, -0.1),
+
+                    // J/L scales along the axis most aligned with player's right
+                    KeyJ | KeyL => {
+                        let axis = if player.right.x.abs() > player.right.z.abs() { 0 } else { 2 };
+                        let delta = if key == KeyL { 0.1 } else { -0.1 };
+                        (axis, delta)
+                    }
+
+                    // I/K scales along the axis most aligned with player's forward
+                    KeyI | KeyK => {
+                        let axis = if player.forward.x.abs() > player.forward.z.abs() { 0 } else { 2 };
+                        let delta = if key == KeyI { 0.1 } else { -0.1 };
+                        (axis, delta)
+                    }
+                    _ => unreachable!(),
+                };
+
+                // Apply the scaling to the chosen axis
+                let mut d_vec = Vec3::new(0.0, 0.0, 0.0);
+                if axis_idx == 0 { d_vec.x = delta; }
+                else if axis_idx == 1 { d_vec.y = delta; }
+                else { d_vec.z = delta; }
+
+                brush.scale += d_vec;
+
+                // Ensure scale doesn't become too small or negative
+                brush.scale.x = brush.scale.x.max(0.1);
+                brush.scale.y = brush.scale.y.max(0.1);
+                brush.scale.z = brush.scale.z.max(0.1);
+
+                // For Box, adjust position to keep min corner fixed (min = pos - 0.5 * scale)
+                if brush.kind == world::KIND_BOX {
+                    brush.pos += d_vec * 0.5;
+                }
+
+                self.selected = Some(self.world.add_brush(brush));
+                self.upload_world();
+            }
 
             // Move the currently selected brush in EditMode::Position
             // Movement is axis-aligned but chosen based on player view
-            KeyI | KeyK | KeyJ | KeyL | KeyY | KeyH => {
+            KeyI | KeyK | KeyJ | KeyL | KeyY | KeyH if self.edit_mode == EditMode::Position => {
                 let Some(brush_id) = self.selected else { return; };
-                if !matches!(self.edit_mode, EditMode::Position) { return; }
 
                 let mut brush = self.world.remove_brush(brush_id);
                 let player = &self.world.player;

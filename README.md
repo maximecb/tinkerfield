@@ -33,7 +33,7 @@ When a brush is selected and you are in Position mode:
 ### Edit Modes
 These keys switch the editing mode for the currently selected brush:
 - **P**: Switch to Position mode (default).
-- **S**: Switch to Scale mode (currently implemented in code but pending key bindings).
+- **X**: Switch to Scale mode.
 - **R**: Switch to Rotation mode (currently implemented in code but pending key bindings).
 
 ## Contributing
