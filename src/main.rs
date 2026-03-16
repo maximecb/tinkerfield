@@ -116,7 +116,9 @@ impl App
                     op: world::OP_ADD,
                     _pad: [0; 3],
                 });
+
                 self.selected = Some(brush_id);
+                self.edit_mode = EditMode::Position;
 
                 self.upload_world();
             }
@@ -130,17 +132,17 @@ impl App
                 }
             }
 
-            Return => {
+            Enter => {
                 // Add the brush to the world but keep a selected copy
                 if let Some(brush_id) = self.selected {
                     let mut brush = self.world.remove_brush(brush_id);
                     self.world.add_brush(brush);
                     self.selected = Some(self.world.add_brush(brush));
+                    self.edit_mode = EditMode::Position;
                     self.upload_world();
                     return;
                 }
             }
-
 
             /*
             KeyP => {
