@@ -2,7 +2,7 @@
 
 Dependencies:
 - The [Rust toolchain](https://www.rust-lang.org/tools/install)
-- wgpu and winit crates
+- wgpu, winit, png crates
 
 Running the program:
 
