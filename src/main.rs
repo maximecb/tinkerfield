@@ -208,9 +208,47 @@ impl App
                 // Calculate the actual change in scale
                 let actual_delta = brush.scale - old_scale;
 
-                // For Box, adjust position to keep min corner fixed (min = pos - 0.5 * scale)
+                // For Box, adjust position to keep a specific corner fixed
                 if brush.kind == world::KIND_BOX {
-                    brush.pos += actual_delta * 0.5;
+                    let player = &self.world.player;
+
+                    // Identify the 4 corners of the base (lowest Y)
+                    let x_min = brush.pos.x - 0.5 * brush.scale.x;
+                    let x_max = brush.pos.x + 0.5 * brush.scale.x;
+                    let z_min = brush.pos.z - 0.5 * brush.scale.z;
+                    let z_max = brush.pos.z + 0.5 * brush.scale.z;
+                    let y_min = brush.pos.y - 0.5 * brush.scale.y;
+
+                    let corners = [
+                        Vec3::new(x_min, y_min, z_min), // 0: min, min
+                        Vec3::new(x_max, y_min, z_min), // 1: max, min
+                        Vec3::new(x_min, y_min, z_max), // 2: min, max
+                        Vec3::new(x_max, y_min, z_max), // 3: max, max
+                    ];
+
+                    let mut best_corner_idx = 0;
+                    let mut min_score = f32::INFINITY;
+
+                    // Find the corner that is "leftmost and nearest" relative to player view
+                    for (i, c) in corners.iter().enumerate() {
+                        let to_corner = *c - player.position;
+                        // Score: distance along view (forward) + distance to right
+                        // Minimizing this finds the "front-left" corner from player's perspective
+                        let score = to_corner.dot(player.forward) + to_corner.dot(player.right);
+                        if score < min_score {
+                            min_score = score;
+                            best_corner_idx = i;
+                        }
+                    }
+
+                    // Determine signs for position adjustment based on the static corner
+                    let s_x = if best_corner_idx % 2 == 0 { 1.0 } else { -1.0 };
+                    let s_z = if best_corner_idx / 2 == 0 { 1.0 } else { -1.0 };
+
+                    // Apply the adjustment: fix X/Z at the chosen corner, always fix Y at the base
+                    brush.pos.x += actual_delta.x * 0.5 * s_x;
+                    brush.pos.z += actual_delta.z * 0.5 * s_z;
+                    brush.pos.y += actual_delta.y * 0.5;
                 }
 
                 self.selected = Some(self.world.add_brush(brush));
