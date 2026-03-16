@@ -98,23 +98,33 @@ fn sd_cone(p: vec3<f32>, h: f32, r1: f32, r2: f32) -> f32 {
     return s * sqrt(min(dot(ca, ca), dot(cb, cb)));
 }
 
+fn sd_ellipsoid(p: vec3<f32>, r: vec3<f32>) -> f32 {
+    let k0 = length(p / r);
+    let k1 = length(p / (r * r));
+    return k0 * (k0 - 1.0) / k1;
+}
+
 fn sdf_brush(p_world: vec3<f32>, brush_idx: u32) -> f32 {
     let b = brushes[brush_idx];
 
-    // Transform world point to local space (but keep world scale for the SDF)
+    // Transform world point to local space
     let p_rel = p_world - b.pos;
     let q_inv = vec4<f32>(-b.rot.xyz, b.rot.w);
     let p_local = qrot(q_inv, p_rel);
 
+    // Scaling factor (half-extents)
+    let s = b.scale * 0.5;
+
     var d = 1e10;
     if (b.kind == 0u) { // BOX
-        d = sd_box(p_local, b.scale * 0.5);
+        d = sd_box(p_local, s);
     } else if (b.kind == 1u) { // CYLINDER
-        d = sd_cylinder(p_local, b.scale.y * 0.5, b.scale.x * 0.5);
-    } else if (b.kind == 2u) { // SPHERE
-        d = length(p_local) - b.scale.x * 0.5;
+        // Scaling trick: scale point, call unit primitive, multiply by min scale
+        d = sd_cylinder(p_local / s, 1.0, 1.0) * min(s.x, min(s.y, s.z));
+    } else if (b.kind == 2u) { // SPHERE (Ellipsoid)
+        d = sd_ellipsoid(p_local, s);
     } else if (b.kind == 3u) { // CONE
-        d = sd_cone(p_local, b.scale.y * 0.5, b.scale.x * 0.5, 0.0);
+        d = sd_cone(p_local / s, 1.0, 1.0, 0.0) * min(s.x, min(s.y, s.z));
     }
 
     return d;
