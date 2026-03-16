@@ -149,19 +149,42 @@ impl App
             KeyR => { self.edit_mode = EditMode::Rotation; }
 
             // Move the currently selected brush in EditMode::Position
-            KeyI | KeyK | KeyJ | KeyL => {
+            // Movement is axis-aligned but chosen based on player view
+            KeyI | KeyK | KeyJ | KeyL | KeyY | KeyH => {
                 if let Some(brush_id) = self.selected {
                     if matches!(self.edit_mode, EditMode::Position) {
                         let mut brush = self.world.remove_brush(brush_id);
+                        let player = &self.world.player;
 
-                        match key {
-                            KeyI => { brush.pos.x += 0.1; }
-                            KeyK => { brush.pos.x -= 0.1; }
-                            KeyJ => { brush.pos.z -= 0.1; }
-                            KeyL => { brush.pos.z += 0.1; }
-                            _ => {}
-                        }
+                        let move_vec = match key {
+                            // Y/H always control the vertical Y axis
+                            KeyY => math::Vec3::new(0.0, 1.0, 0.0),
+                            KeyH => math::Vec3::new(0.0, -1.0, 0.0),
+                            
+                            // J/L moves left/right relative to player, constrained to horizontal X or Z
+                            KeyJ | KeyL => {
+                                let dir = if key == KeyL { player.right } else { -player.right };
+                                if dir.x.abs() > dir.z.abs() {
+                                    math::Vec3::new(if dir.x > 0.0 { 1.0 } else { -1.0 }, 0.0, 0.0)
+                                } else {
+                                    math::Vec3::new(0.0, 0.0, if dir.z > 0.0 { 1.0 } else { -1.0 })
+                                }
+                            }
+                            
+                            // I/K moves away/closer relative to player, constrained to horizontal X or Z
+                            KeyI | KeyK => {
+                                let dir = if key == KeyI { player.forward } else { -player.forward };
+                                if dir.x.abs() > dir.z.abs() {
+                                    math::Vec3::new(if dir.x > 0.0 { 1.0 } else { -1.0 }, 0.0, 0.0)
+                                } else {
+                                    math::Vec3::new(0.0, 0.0, if dir.z > 0.0 { 1.0 } else { -1.0 })
+                                }
+                            }
+                            _ => math::Vec3::new(0.0, 0.0, 0.0),
+                        };
 
+                        // Apply the axis-aligned movement
+                        brush.pos += move_vec * 0.1;
                         self.selected = Some(self.world.add_brush(brush));
                         self.upload_world();
                     }
