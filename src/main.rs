@@ -107,8 +107,13 @@ impl App
                     return;
                 }
 
-                // TODO: wall brush
-                let pos = self.world.player.position + self.world.player.forward * 3.0;
+                let mut pos = self.world.player.position + self.world.player.forward * 3.0;
+
+                // Align the brush position to the nearest multiple of 0.1
+                pos.x = (pos.x * 10.0).round() / 10.0;
+                pos.y = (pos.y * 10.0).round() / 10.0;
+                pos.z = (pos.z * 10.0).round() / 10.0;
+
                 let brush_id = self.world.add_brush(world::Brush {
                     pos,
                     kind: world::KIND_BOX,
