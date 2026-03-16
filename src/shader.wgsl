@@ -84,8 +84,18 @@ fn sd_box(p: vec3<f32>, size: vec3<f32>) -> f32 {
 }
 
 fn sd_cylinder(p: vec3<f32>, h: f32, r: f32) -> f32 {
-    let d = abs(vec2<f32>(length(p.xy), p.z)) - vec2<f32>(r, h);
+    let d = abs(vec2<f32>(length(p.xz), p.y)) - vec2<f32>(r, h);
     return min(max(d.x, d.y), 0.0) + length(max(d, vec2<f32>(0.0)));
+}
+
+fn sd_cone(p: vec3<f32>, h: f32, r1: f32, r2: f32) -> f32 {
+    let q = vec2<f32>(length(p.xz), p.y);
+    let k1 = vec2<f32>(r2, h);
+    let k2 = vec2<f32>(r2 - r1, 2.0 * h);
+    let ca = vec2<f32>(q.x - min(q.x, select(r2, r1, q.y < 0.0)), abs(q.y) - h);
+    let cb = q - k1 + k2 * clamp(dot(k1 - q, k2) / dot(k2, k2), 0.0, 1.0);
+    let s = select(1.0, -1.0, cb.x < 0.0 && ca.y < 0.0);
+    return s * sqrt(min(dot(ca, ca), dot(cb, cb)));
 }
 
 fn sdf_brush(p_world: vec3<f32>, brush_idx: u32) -> f32 {
@@ -100,9 +110,11 @@ fn sdf_brush(p_world: vec3<f32>, brush_idx: u32) -> f32 {
     if (b.kind == 0u) { // BOX
         d = sd_box(p_local, b.scale * 0.5);
     } else if (b.kind == 1u) { // CYLINDER
-        d = sd_cylinder(p_local, b.scale.z * 0.5, b.scale.x * 0.5);
+        d = sd_cylinder(p_local, b.scale.y * 0.5, b.scale.x * 0.5);
     } else if (b.kind == 2u) { // SPHERE
         d = length(p_local) - b.scale.x * 0.5;
+    } else if (b.kind == 3u) { // CONE
+        d = sd_cone(p_local, b.scale.y * 0.5, b.scale.x * 0.5, 0.0);
     }
 
     return d;

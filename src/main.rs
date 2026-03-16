@@ -110,7 +110,7 @@ impl App
                 let brush_id = self.world.add_brush(world::Brush {
                     pos,
                     kind: world::KIND_BOX,
-                    scale: math::Vec3::new(2.0, 2.0, 2.0),
+                    scale: math::Vec3::new(1.0, 1.0, 1.0),
                     material: world::MAT_WOOD,
                     rot: math::Quat::IDENTITY,
                     op: world::OP_ADD,
@@ -121,6 +121,25 @@ impl App
                 self.upload_world();
             }
 
+            Delete | Backspace => {
+                println!("delete key");
+                if let Some(brush_id) = self.selected {
+                    self.world.remove_brush(brush_id);
+                    self.upload_world();
+                    self.selected = None;
+                }
+            }
+
+            Return => {
+                // Add the brush to the world but keep a selected copy
+                if let Some(brush_id) = self.selected {
+                    let mut brush = self.world.remove_brush(brush_id);
+                    self.world.add_brush(brush);
+                    self.selected = Some(self.world.add_brush(brush));
+                    self.upload_world();
+                    return;
+                }
+            }
 
 
             /*
