@@ -14,15 +14,33 @@ mod world;
 mod math;
 mod gpu;
 
+enum EditMode
+{
+    Position,
+    Rotation,
+    Scale,
+}
+
 struct App
 {
     gpu_state: Option<gpu::GPUState>,
     world: world::World,
+
+    /// Delta time measurement
     start_time: Instant,
     last_update: Instant,
-    key_down: HashSet<KeyCode>,
+
+    /// Frame count measurement
     frame_count: u32,
     last_fps_print: Instant,
+
+    key_down: HashSet<KeyCode>,
+
+    /// Currently selected brush
+    selected: Option<u16>,
+
+    /// Current brush edit mode
+    edit_mode: EditMode,
 }
 
 impl App
@@ -35,9 +53,11 @@ impl App
             world: world::World::new(),
             start_time: now,
             last_update: now,
-            key_down: HashSet::new(),
             frame_count: 0,
             last_fps_print: now,
+            key_down: HashSet::new(),
+            selected: None,
+            edit_mode: EditMode::Position,
         }
     }
 
@@ -71,11 +91,23 @@ impl App
 
     fn key_press(&mut self, key: KeyCode)
     {
+        use crate::world::*;
         use KeyCode::*;
+
         match key {
             KeyO => {
+                // If a brush is currently selected
+                if let Some(brush_id) = self.selected {
+                    let mut brush = self.world.remove_brush(brush_id);
+                    brush.kind = (brush.kind + 1) % NUM_BRUSH_KINDS;
+                    self.selected = Some(self.world.add_brush(brush));
+                    self.upload_world();
+                    return;
+                }
+
+                // TODO: wall brush
                 let pos = self.world.player.position + self.world.player.forward * 3.0;
-                self.world.add_brush(world::Brush {
+                let brush_id = self.world.add_brush(world::Brush {
                     pos,
                     kind: world::KIND_BOX,
                     scale: math::Vec3::new(2.0, 2.0, 2.0),
@@ -84,11 +116,14 @@ impl App
                     op: world::OP_ADD,
                     _pad: [0; 3],
                 });
-                if let Some(gpu_state) = &self.gpu_state {
-                    self.world.upload_world(&gpu_state.queue, &gpu_state.gpu_world);
-                }
+                self.selected = Some(brush_id);
+
+                self.upload_world();
             }
 
+
+
+            /*
             KeyP => {
                 let pos = self.world.player.position + self.world.player.forward * 2.5;
                 let rot = math::Quat::from_rotation_y(self.world.player.yaw.to_radians()) *
@@ -106,8 +141,16 @@ impl App
                     self.world.upload_world(&gpu_state.queue, &gpu_state.gpu_world);
                 }
             }
+            */
 
             _ => {}
+        }
+    }
+
+    fn upload_world(&self)
+    {
+        if let Some(gpu_state) = &self.gpu_state {
+            self.world.upload_world(&gpu_state.queue, &gpu_state.gpu_world);
         }
     }
 }

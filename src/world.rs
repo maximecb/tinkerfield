@@ -9,6 +9,7 @@ pub const KIND_BOX: u32 = 0;
 pub const KIND_CYLINDER: u32 = 1;
 pub const KIND_SPHERE: u32 = 2;
 pub const KIND_CONE: u32 = 3;
+pub const NUM_BRUSH_KINDS: u32 = 4;
 
 /// CSG operations
 pub const OP_ADD: u32 = 0;
@@ -208,11 +209,11 @@ impl World
     }
 
     /// Remove a brush from the world
-    pub fn remove_brush(&mut self, index: u16)
+    pub fn remove_brush(&mut self, index: u16) -> Brush
     {
-        if (index as usize) >= self.brushes.len() {
-            return;
-        }
+        assert!((index as usize) < self.brushes.len());
+
+        let brush = self.brushes[index as usize];
 
         // Nullify the brush data
         self.brushes[index as usize] = Brush {
@@ -227,6 +228,9 @@ impl World
 
         self.free_indices.push(index);
         self.rebuild_grid();
+
+        // Return the brush data
+        brush
     }
 
     /// Add a brush to the world grid
