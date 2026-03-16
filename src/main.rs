@@ -187,22 +187,25 @@ impl App
                     _ => unreachable!(),
                 };
 
-                // Apply the scaling to the chosen axis
-                let mut d_vec = Vec3::new(0.0, 0.0, 0.0);
-                if axis_idx == 0 { d_vec.x = delta; }
-                else if axis_idx == 1 { d_vec.y = delta; }
-                else { d_vec.z = delta; }
+                // Capture old scale to calculate actual change after clamping
+                let old_scale = brush.scale;
 
-                brush.scale += d_vec;
+                // Apply the scaling to the chosen axis
+                if axis_idx == 0 { brush.scale.x += delta; }
+                else if axis_idx == 1 { brush.scale.y += delta; }
+                else { brush.scale.z += delta; }
 
                 // Ensure scale doesn't become too small or negative
                 brush.scale.x = brush.scale.x.max(0.1);
                 brush.scale.y = brush.scale.y.max(0.1);
                 brush.scale.z = brush.scale.z.max(0.1);
 
+                // Calculate the actual change in scale
+                let actual_delta = brush.scale - old_scale;
+
                 // For Box, adjust position to keep min corner fixed (min = pos - 0.5 * scale)
                 if brush.kind == world::KIND_BOX {
-                    brush.pos += d_vec * 0.5;
+                    brush.pos += actual_delta * 0.5;
                 }
 
                 self.selected = Some(self.world.add_brush(brush));
