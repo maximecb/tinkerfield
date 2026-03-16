@@ -19,7 +19,8 @@ cargo run --release
 - **Escape**: Exit
 
 ### Brush Management
-- **O**: Add a new Box brush at a distance. If a brush is already selected, cycle its shape (Box, Cylinder, Sphere, Cone).
+- **O**: Add a new Box brush in front of the player.
+  - If a brush is already selected, pressing **O** will cycle its type (Box, Cylinder, Sphere, Cone).
 - **Enter**: "Stamp" the current brush (duplicate it and keep the new one selected).
 - **Delete / Backspace**: Remove the selected brush.
 
@@ -30,12 +31,14 @@ When a brush is selected and you are in Position mode:
 - **Y / H**: Move vertically Up / Down (World Y axis).
 
 ### Edit Modes
+These keys switch the editing mode for the currently selected brush:
 - **P**: Switch to Position mode (default).
 - **S**: Switch to Scale mode (currently implemented in code but pending key bindings).
 - **R**: Switch to Rotation mode (currently implemented in code but pending key bindings).
 
 ## Contributing
-...
+
 Contributions for algorithmic optimizations and new features welcome.
 However, note that smaller pull requests are more likely to get merged.
+Please avoid opening pull requests with major design changes without discussing the changes you want to make first.
 New textures welcome, as long as they are licensed under CC0.
