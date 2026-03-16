@@ -135,7 +135,7 @@ impl App
             Enter => {
                 // Add the brush to the world but keep a selected copy
                 if let Some(brush_id) = self.selected {
-                    let mut brush = self.world.remove_brush(brush_id);
+                    let brush = self.world.remove_brush(brush_id);
                     self.world.add_brush(brush);
                     self.selected = Some(self.world.add_brush(brush));
                     self.edit_mode = EditMode::Position;
@@ -144,25 +144,29 @@ impl App
                 }
             }
 
-            /*
-            KeyP => {
-                let pos = self.world.player.position + self.world.player.forward * 2.5;
-                let rot = math::Quat::from_rotation_y(self.world.player.yaw.to_radians()) *
-                            math::Quat::from_rotation_x(-self.world.player.pitch.to_radians());
-                self.world.add_brush(world::Brush {
-                    pos,
-                    kind: world::KIND_CYLINDER,
-                    scale: math::Vec3::new(1.0, 1.0, 8.0),
-                    material: world::MAT_METAL,
-                    rot,
-                    op: world::OP_SUB,
-                    _pad: [0; 3],
-                });
-                if let Some(gpu_state) = &self.gpu_state {
-                    self.world.upload_world(&gpu_state.queue, &gpu_state.gpu_world);
+            KeyP => { self.edit_mode = EditMode::Position; }
+            KeyS => { self.edit_mode = EditMode::Scale; }
+            KeyR => { self.edit_mode = EditMode::Rotation; }
+
+            // Move the currently selected brush in EditMode::Position
+            KeyI | KeyK | KeyJ | KeyL => {
+                if let Some(brush_id) = self.selected {
+                    if matches!(self.edit_mode, EditMode::Position) {
+                        let mut brush = self.world.remove_brush(brush_id);
+
+                        match key {
+                            KeyI => { brush.pos.x += 0.1; }
+                            KeyK => { brush.pos.x -= 0.1; }
+                            KeyJ => { brush.pos.z -= 0.1; }
+                            KeyL => { brush.pos.z += 0.1; }
+                            _ => {}
+                        }
+
+                        self.selected = Some(self.world.add_brush(brush));
+                        self.upload_world();
+                    }
                 }
             }
-            */
 
             _ => {}
         }
