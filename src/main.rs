@@ -165,15 +165,15 @@ impl App
             }
 
             // Scale the currently selected brush in EditMode::Scale
-            KeyI | KeyK | KeyJ | KeyL | KeyU | KeyH if self.edit_mode == EditMode::Scale => {
+            KeyI | KeyK | KeyJ | KeyL | KeyY | KeyH if self.edit_mode == EditMode::Scale => {
                 let Some(brush_id) = self.selected else { return; };
 
                 let mut brush = self.world.remove_brush(brush_id);
                 let player = &self.world.player;
 
                 let (axis_idx, delta) = match key {
-                    // U/H always control the vertical Y axis
-                    KeyU => (1, 0.1),
+                    // Y/H always control the vertical Y axis
+                    KeyY => (1, 0.1),
                     KeyH => (1, -0.1),
 
                     // J/L scales along the axis most aligned with player's right
@@ -257,15 +257,15 @@ impl App
 
             // Move the currently selected brush in EditMode::Position
             // Movement is axis-aligned but chosen based on player view
-            KeyI | KeyK | KeyJ | KeyL | KeyU | KeyH if self.edit_mode == EditMode::Position => {
+            KeyI | KeyK | KeyJ | KeyL | KeyY | KeyH if self.edit_mode == EditMode::Position => {
                 let Some(brush_id) = self.selected else { return; };
 
                 let mut brush = self.world.remove_brush(brush_id);
                 let player = &self.world.player;
 
                 let move_vec = match key {
-                    // U/H always control the vertical Y axis
-                    KeyU => Vec3::new(0.0, 1.0, 0.0),
+                    // Y/H always control the vertical Y axis
+                    KeyY => Vec3::new(0.0, 1.0, 0.0),
                     KeyH => Vec3::new(0.0, -1.0, 0.0),
 
                     // J/L moves left/right relative to player, constrained to horizontal X or Z
