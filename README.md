@@ -24,13 +24,13 @@ cargo run --release
 - **Enter**: "Stamp" the current brush (duplicate it and keep the new one selected).
 - **Delete / Backspace**: Remove the selected brush.
 
-### Brush Editing (Position Mode - 'P' key)
+### Position Edit Mode ('P' key)
 When a brush is selected and you are in Position mode:
 - **I / K**: Move forward / backward relative to your view (aligned to the nearest world X or Z axis).
 - **J / L**: Move left / right relative to your view (aligned to the nearest world X or Z axis).
 - **Y / H**: Move vertically Up / Down (World Y axis).
 
-### Brush Editing (Scale Mode - 'X' key)
+### Scale Edit Mode ('X' key)
 When a brush is selected and you are in Scale mode:
 - **I / K**: Scale along the world horizontal axis (X or Z) most aligned with your forward view.
 - **J / L**: Scale along the world horizontal axis (X or Z) most aligned with your right view.
