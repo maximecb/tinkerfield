@@ -18,12 +18,6 @@ pub const OP_SUB: u32 = 1;
 /// Grid cell slot empty
 pub const SLOT_EMPTY: u16 = u16::MAX;
 
-/// Materials
-pub const MAT_CONCRETE: u32 = 0;
-pub const MAT_METAL: u32 = 1;
-pub const MAT_WOOD: u32 = 2;
-pub const MAT_GRASS: u32 = 3;
-
 // Total size: 64 bytes
 // Every vec3/vec4 field is 16-byte aligned
 #[repr(C)]
@@ -184,7 +178,7 @@ impl World
             pos: Vec3::new(0.0, -0.1, 0.0),
             kind: KIND_BOX,
             scale: Vec3::new(40.0, 0.2, 40.0),
-            material: MAT_CONCRETE,
+            material: 0,
             rot: Quat::IDENTITY,
             op: OP_ADD,
             _pad: [0; 3],

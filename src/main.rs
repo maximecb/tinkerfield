@@ -122,7 +122,7 @@ impl App
                     pos,
                     kind: world::KIND_BOX,
                     scale: math::Vec3::new(1.0, 1.0, 1.0),
-                    material: world::MAT_WOOD,
+                    material: 0,
                     rot: math::Quat::IDENTITY,
                     op: world::OP_ADD,
                     _pad: [0; 3],
