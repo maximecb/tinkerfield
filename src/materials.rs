@@ -8,6 +8,7 @@ pub struct MaterialRegistry
 {
     pub texture_datas: Vec<Vec<u8>>,
     pub specular_factors: Vec<f32>,
+    pub names: Vec<String>,
 }
 
 /// GPU-side resources for materials (texture array, sampler, specular buffer)
@@ -72,6 +73,7 @@ impl MaterialRegistry
         Self {
             texture_datas,
             specular_factors,
+            names: Vec::default(),
         }
     }
 
