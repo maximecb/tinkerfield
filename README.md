@@ -48,4 +48,6 @@ These keys switch the editing mode for the currently selected brush:
 Contributions for algorithmic optimizations and new features welcome.
 However, note that smaller pull requests are more likely to get merged.
 Please avoid opening pull requests with major design changes without discussing the changes you want to make first.
-New textures welcome, as long as they are licensed under CC0.
+
+New textures welcome, as long as they are licensed under CC0. Textures should be
+in 24-bit TNG format.

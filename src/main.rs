@@ -13,6 +13,7 @@ use winit::{
 mod world;
 mod math;
 mod gpu;
+mod materials;
 
 #[derive(PartialEq)]
 enum EditMode
