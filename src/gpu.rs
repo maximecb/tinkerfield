@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use winit::window::Window;
 use crate::world::{Brush, Player, MAX_BRUSHES, WorldUniforms};
+use crate::materials::{GPUMaterials, MaterialRegistry};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -168,21 +169,24 @@ impl GPUWorld
 
 /// Rendering and windowing state
 /// On mobile, this can be recreated multiple times
+#[allow(dead_code)]
 pub struct GPUState
 {
     pub surface: wgpu::Surface<'static>,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
+    pub config: wgpu::SurfaceConfiguration,
     pub render_pipeline: wgpu::RenderPipeline,
     pub uniform_buffer: wgpu::Buffer,
     pub uniform_bind_group: wgpu::BindGroup,
     pub window: Arc<Window>,
     pub gpu_world: GPUWorld,
+    pub gpu_materials: GPUMaterials,
 }
 
 impl GPUState
 {
-    pub async fn new(window: Arc<Window>) -> Self
+    pub async fn new(window: Arc<Window>, materials: &MaterialRegistry) -> Self
     {
         let instance = wgpu::Instance::default();
         let surface = instance.create_surface(Arc::clone(&window)).unwrap();
@@ -278,10 +282,51 @@ impl GPUState
 
         let gpu_world = GPUWorld::new(&device);
 
+        let material_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Material Bind Group Layout"),
+            entries: &[
+                // Texture Array
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2Array,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                // Sampler
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+                // Specular Buffer
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let gpu_materials = GPUMaterials::new(&device, &queue, materials, &material_bind_group_layout);
+
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&uniform_bind_group_layout, &gpu_world.bind_group_layout],
+                bind_group_layouts: &[
+                    &uniform_bind_group_layout,
+                    &gpu_world.bind_group_layout,
+                    &material_bind_group_layout,
+                ],
                 push_constant_ranges: &[],
             });
 
@@ -315,11 +360,13 @@ impl GPUState
             surface,
             device,
             queue,
+            config,
             render_pipeline,
             uniform_buffer,
             uniform_bind_group,
             window,
             gpu_world,
+            gpu_materials,
         }
     }
 
@@ -367,6 +414,7 @@ impl GPUState
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
         render_pass.set_bind_group(1, &self.gpu_world.bind_group, &[]);
+        render_pass.set_bind_group(2, &self.gpu_materials.bind_group, &[]);
         render_pass.draw(0..3, 0..1);
         drop(render_pass);
 

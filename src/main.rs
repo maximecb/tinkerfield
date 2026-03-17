@@ -1,3 +1,8 @@
+mod world;
+mod math;
+mod gpu;
+mod materials;
+
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
@@ -9,11 +14,7 @@ use winit::{
     keyboard::{KeyCode, PhysicalKey},
     window::{CursorGrabMode, Window, WindowId},
 };
-
-mod world;
-mod math;
-mod gpu;
-mod materials;
+use materials::MaterialRegistry;
 
 #[derive(PartialEq)]
 enum EditMode
@@ -27,6 +28,7 @@ struct App
 {
     gpu_state: Option<gpu::GPUState>,
     world: world::World,
+    materials: MaterialRegistry,
 
     /// Delta time measurement
     start_time: Instant,
@@ -53,6 +55,7 @@ impl App
         Self {
             gpu_state: None,
             world: world::World::new(),
+            materials: MaterialRegistry::load(),
             start_time: now,
             last_update: now,
             frame_count: 0,
@@ -331,7 +334,7 @@ impl ApplicationHandler for App
                 .unwrap(),
         );
 
-        let gpu_state = pollster::block_on(gpu::GPUState::new(Arc::clone(&window)));
+        let gpu_state = pollster::block_on(gpu::GPUState::new(Arc::clone(&window), &self.materials));
 
         // Perform initial upload
         self.world.upload_world(&gpu_state.queue, &gpu_state.gpu_world);
