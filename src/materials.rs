@@ -1,6 +1,7 @@
 use std::fs;
 use std::io::BufReader;
 use std::path::Path;
+use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 
 /// CPU-side registry that loads and tiles textures from disk once
@@ -9,6 +10,7 @@ pub struct MaterialRegistry
     texture_datas: Vec<Vec<u8>>,
     specular_factors: Vec<f32>,
     names: Vec<String>,
+    name_to_id: HashMap<String, u32>,
 }
 
 /// GPU-side resources for materials (texture array, sampler, specular buffer)
@@ -27,6 +29,7 @@ impl MaterialRegistry
     pub fn load() -> Self
     {
         let mut names = Vec::new();
+        let mut name_to_id = HashMap::new();
 
         // Read all files in the textures directory to collect names
         let entries = fs::read_dir("textures").expect("Could not read textures directory");
@@ -64,6 +67,10 @@ impl MaterialRegistry
             }
         });
 
+        for (idx, name) in names.iter().enumerate() {
+            name_to_id.insert(name.clone(), idx.try_into().unwrap());
+        }
+
         let mut texture_datas = Vec::new();
         let mut specular_factors = Vec::new();
 
@@ -86,14 +93,15 @@ impl MaterialRegistry
 
             // Set specular highlights based on keywords in the filename
             let spec = if name.contains("metal") {
-                0.5f32 // Medium specular for metal
+                0.6f32 // Increased for better visibility
             } else if name.contains("glass") || name.contains("window") {
-                0.8f32 // High specular for glass/windows
+                0.9f32
             } else if name.contains("concrete") {
-                0.1f32
+                0.2f32
             } else {
-                0.0f32
+                0.05f32 // Default small specular highlight
             };
+            println!("Loading texture: {}.png (spec: {})", name, spec);
             specular_factors.push(spec);
         }
 
@@ -101,6 +109,7 @@ impl MaterialRegistry
             texture_datas,
             specular_factors,
             names,
+            name_to_id,
         }
     }
 
@@ -113,6 +122,11 @@ impl MaterialRegistry
     pub fn material_name(&self, idx: u32) -> &str
     {
         &self.names[idx as usize]
+    }
+
+    pub fn id_from_name(&self, name: &str) -> u32
+    {
+        self.name_to_id[name]
     }
 }
 
@@ -141,7 +155,7 @@ impl GPUMaterials
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
