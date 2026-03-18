@@ -6,9 +6,9 @@ use wgpu::util::DeviceExt;
 /// CPU-side registry that loads and tiles textures from disk once
 pub struct MaterialRegistry
 {
-    pub texture_datas: Vec<Vec<u8>>,
-    pub specular_factors: Vec<f32>,
-    pub names: Vec<String>,
+    texture_datas: Vec<Vec<u8>>,
+    specular_factors: Vec<f32>,
+    names: Vec<String>,
 }
 
 /// GPU-side resources for materials (texture array, sampler, specular buffer)
