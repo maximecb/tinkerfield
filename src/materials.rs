@@ -50,7 +50,7 @@ impl MaterialRegistry
             panic!("No valid PNG textures found in textures/ directory");
         }
 
-        // Sort names: "concrete_01" first, then other "concrete" textures, then the rest
+        // Sort concrete textures first as they are the default textures
         names.sort_by(|a, b| {
             let a_is_concrete = a.starts_with("concrete");
             let b_is_concrete = b.starts_with("concrete");
