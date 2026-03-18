@@ -105,9 +105,14 @@ impl MaterialRegistry
     }
 
     /// Get the total number of loaded materials
-    pub fn get_num_materials(&self) -> u32
+    pub fn num_materials(&self) -> u32
     {
         self.texture_datas.len() as u32
+    }
+
+    pub fn material_name(&self, idx: u32) -> &str
+    {
+        &self.names[idx as usize]
     }
 }
 
@@ -121,7 +126,7 @@ impl GPUMaterials
         layout: &wgpu::BindGroupLayout
     ) -> Self
     {
-        let num_layers = registry.get_num_materials();
+        let num_layers = registry.num_materials();
 
         let texture_extent = wgpu::Extent3d {
             width: 1024,

@@ -49,6 +49,15 @@ var<uniform> player: Player;
 @group(1) @binding(4)
 var<uniform> world: WorldUniforms;
 
+@group(2) @binding(0)
+var material_textures: texture_2d_array<f32>;
+
+@group(2) @binding(1)
+var material_sampler: sampler;
+
+@group(2) @binding(2)
+var<storage, read> specular_factors: array<f32>;
+
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) uv: vec2<f32>,
@@ -137,42 +146,70 @@ fn get_grid_brush_index(idx: u32) -> u32 {
     return select(word & 0xFFFFu, word >> 16u, (idx % 2u) == 1u);
 }
 
+struct Hit {
+    d: f32,
+    mat_id: u32,
+};
+
 /// This function assumes we have valid grid coordinates
-fn sdf_at_cell(p: vec3<f32>, cell_idx: u32) -> f32 {
+fn sdf_at_cell(p: vec3<f32>, cell_idx: u32) -> Hit {
     let cell_info = grid[cell_idx];
     let offset = cell_info >> 8u;
     let count = cell_info & 0xFFu;
 
-    var d = 1e10;
+    var res = Hit(1e10, 0u);
     var found = false;
     for (var i = 0u; i < count; i++) {
         let brush_idx = get_grid_brush_index(offset + i);
         let d_brush = sdf_brush(p, brush_idx);
-        let op = brushes[brush_idx].op;
+        let b = brushes[brush_idx];
+        let op = b.op;
 
         if (!found) {
-            d = d_brush;
+            res.d = d_brush;
+            res.mat_id = b.material;
             found = true;
         } else {
             if (op == 0u) { // ADD
-                d = min(d, d_brush);
+                if (d_brush < res.d) {
+                    res.d = d_brush;
+                    res.mat_id = b.material;
+                }
             } else { // SUB
-                d = max(d, -d_brush);
+                if (-d_brush > res.d) {
+                    res.d = -d_brush;
+                    res.mat_id = b.material;
+                }
             }
         }
     }
 
-    return d;
+    return res;
 }
 
 fn get_normal(p: vec3<f32>, cell_idx: u32) -> vec3<f32> {
     let e = vec2<f32>(1.0, -1.0) * 0.00001;
     return normalize(
-        e.xyy * sdf_at_cell(p + e.xyy, cell_idx) +
-        e.yyx * sdf_at_cell(p + e.yyx, cell_idx) +
-        e.yxy * sdf_at_cell(p + e.yxy, cell_idx) +
-        e.xxx * sdf_at_cell(p + e.xxx, cell_idx)
+        e.xyy * sdf_at_cell(p + e.xyy, cell_idx).d +
+        e.yyx * sdf_at_cell(p + e.yyx, cell_idx).d +
+        e.yxy * sdf_at_cell(p + e.yxy, cell_idx).d +
+        e.xxx * sdf_at_cell(p + e.xxx, cell_idx).d
     );
+}
+
+fn triplanar_sample(p: vec3<f32>, n: vec3<f32>, mat_id: u32) -> vec3<f32> {
+    let blending = abs(n);
+    let b = blending / (blending.x + blending.y + blending.z);
+
+    // Scale world-space coordinates to UV space:
+    // 1024 texels per texture / 512 texels per meter = 2 meters per texture repeat.
+    let uv_p = p * 0.5;
+
+    let xaxis = textureSample(material_textures, material_sampler, uv_p.yz, i32(mat_id)).rgb;
+    let yaxis = textureSample(material_textures, material_sampler, uv_p.xz, i32(mat_id)).rgb;
+    let zaxis = textureSample(material_textures, material_sampler, uv_p.xy, i32(mat_id)).rgb;
+
+    return xaxis * b.x + yaxis * b.y + zaxis * b.z;
 }
 
 fn intersect_aabb(ro: vec3<f32>, rd: vec3<f32>, b_min: vec3<f32>, b_max: vec3<f32>) -> vec2<f32> {
@@ -225,19 +262,25 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
             // Sphere trace within this cell
             while (t < t_boundary - 0.001) {
                 let p = ro + rd * t;
-                let d = sdf_at_cell(p, cell_idx);
+                let hit = sdf_at_cell(p, cell_idx);
+                let d = hit.d;
 
                 // Calculate epsilon as 1/2 or 1/4 of the pixel size at distance t
                 let epsilon = t * uniforms.pixel_size_at_1m * 0.125;
 
                 if (d < epsilon) {
                     let n = get_normal(p, cell_idx);
+                    let mat_id = hit.mat_id;
+                    let albedo = triplanar_sample(p, n, mat_id);
+                    let spec_factor = specular_factors[mat_id];
+
                     let light_dir = normalize(vec3<f32>(0.85, 1.0, -0.7));
                     let diff = max(dot(n, light_dir), 0.0);
                     let half_dir = normalize(light_dir - rd);
-                    let spec = pow(max(dot(n, half_dir), 0.0), 32.0);
+                    let spec_highlight = pow(max(dot(n, half_dir), 0.0), 32.0);
                     let ambient = 0.15;
-                    let color = vec3<f32>(0.4, 0.5, 0.7) * (diff + ambient) + vec3<f32>(0.4) * spec;
+
+                    let color = albedo * (diff + ambient) + vec3<f32>(spec_factor) * spec_highlight;
                     return vec4<f32>(color, 1.0);
                 }
                 t += max(d, epsilon);
