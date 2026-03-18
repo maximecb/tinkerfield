@@ -26,10 +26,9 @@ impl MaterialRegistry
     /// Load all PNG textures from the textures directory
     pub fn load() -> Self
     {
-        let mut texture_datas = Vec::new();
-        let mut specular_factors = Vec::new();
+        let mut names = Vec::new();
 
-        // Read all files in the textures directory
+        // Read all files in the textures directory to collect names
         let entries = fs::read_dir("textures").expect("Could not read textures directory");
         for entry in entries {
             let entry = entry.expect("Could not read directory entry");
@@ -37,43 +36,71 @@ impl MaterialRegistry
 
             // Only process PNG files
             if path.extension().and_then(|s| s.to_str()) == Some("png") {
-                let filename = path.file_name().unwrap().to_str().unwrap().to_lowercase();
-                println!("Loading texture: {}", filename);
+                if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
+                    if name.to_lowercase() != name {
+                        println!("Texture file names should be lowercase: {}", name);
+                    }
 
-                // Load PNG pixels and dimensions
-                let (data, width, height) = load_png(&path);
-
-                // Ensure the texture can be tiled perfectly into a 1024x1024 square
-                if 1024 % width != 0 || 1024 % height != 0 {
-                    panic!("Texture size {}x{} in {:?} is not a divisor of 1024", width, height, path);
+                    names.push(name.to_string());
                 }
-
-                // Tile the texture to fill a 1024x1024 RGBA buffer
-                let tiled_data = tile_texture(&data, width, height, 1024, 1024);
-                texture_datas.push(tiled_data);
-
-                // Set specular highlights based on keywords in the filename
-                let spec = if filename.contains("metal") {
-                    0.5f32 // Medium specular for metal
-                } else if filename.contains("glass") || filename.contains("window") {
-                    0.8f32 // High specular for glass/windows
-                } else if filename.contains("concrete") {
-                    0.1f32
-                } else {
-                    0.0f32
-                };
-                specular_factors.push(spec);
             }
         }
 
-        if texture_datas.is_empty() {
+        if names.is_empty() {
             panic!("No valid PNG textures found in textures/ directory");
+        }
+
+        // Sort names: "concrete_01" first, then other "concrete" textures, then the rest
+        names.sort_by(|a, b| {
+            let a_is_concrete = a.starts_with("concrete");
+            let b_is_concrete = b.starts_with("concrete");
+
+            if a_is_concrete && !b_is_concrete {
+                std::cmp::Ordering::Less
+            } else if !a_is_concrete && b_is_concrete {
+                std::cmp::Ordering::Greater
+            } else {
+                a.cmp(b)
+            }
+        });
+
+        let mut texture_datas = Vec::new();
+        let mut specular_factors = Vec::new();
+
+        // Load textures based on the sorted names
+        for name in &names {
+            let path = Path::new("textures").join(format!("{}.png", name));
+            println!("Loading texture: {}.png", name);
+
+            // Load PNG pixels and dimensions
+            let (data, width, height) = load_png(&path);
+
+            // Ensure the texture can be tiled perfectly into a 1024x1024 square
+            if 1024 % width != 0 || 1024 % height != 0 {
+                panic!("Texture size {}x{} in {:?} is not a divisor of 1024", width, height, path);
+            }
+
+            // Tile the texture to fill a 1024x1024 RGBA buffer
+            let tiled_data = tile_texture(&data, width, height, 1024, 1024);
+            texture_datas.push(tiled_data);
+
+            // Set specular highlights based on keywords in the filename
+            let spec = if name.contains("metal") {
+                0.5f32 // Medium specular for metal
+            } else if name.contains("glass") || name.contains("window") {
+                0.8f32 // High specular for glass/windows
+            } else if name.contains("concrete") {
+                0.1f32
+            } else {
+                0.0f32
+            };
+            specular_factors.push(spec);
         }
 
         Self {
             texture_datas,
             specular_factors,
-            names: Vec::default(),
+            names,
         }
     }
 
