@@ -197,7 +197,7 @@ fn get_normal(p: vec3<f32>, cell_idx: u32) -> vec3<f32> {
     );
 }
 
-fn triplanar_sample(p: vec3<f32>, n: vec3<f32>, mat_id: u32) -> vec3<f32> {
+fn triplanar_sample(p: vec3<f32>, n: vec3<f32>, mat_id: u32, t: f32) -> vec3<f32> {
     let blending = abs(n);
     let b = blending / (blending.x + blending.y + blending.z);
 
@@ -205,9 +205,17 @@ fn triplanar_sample(p: vec3<f32>, n: vec3<f32>, mat_id: u32) -> vec3<f32> {
     // 1024 texels per texture / 512 texels per meter = 2 meters per texture repeat.
     let uv_p = p * 0.5;
 
-    let xaxis = textureSample(material_textures, material_sampler, uv_p.yz, i32(mat_id)).rgb;
-    let yaxis = textureSample(material_textures, material_sampler, uv_p.xz, i32(mat_id)).rgb;
-    let zaxis = textureSample(material_textures, material_sampler, uv_p.xy, i32(mat_id)).rgb;
+    // Calculate LOD based on distance t.
+    // At distance t, one screen pixel covers ~ (t * uniforms.pixel_size_at_1m) world units.
+    // Our texture is 1024 texels for 2 meters (512 texels/m).
+    // Texels covered per pixel = (t * uniforms.pixel_size_at_1m) * 512.0
+    // LOD = log2(texels per pixel)
+    let texels_per_pixel = t * uniforms.pixel_size_at_1m * 512.0;
+    let lod = max(0.0, log2(texels_per_pixel));
+
+    let xaxis = textureSampleLevel(material_textures, material_sampler, uv_p.yz, i32(mat_id), lod).rgb;
+    let yaxis = textureSampleLevel(material_textures, material_sampler, uv_p.xz, i32(mat_id), lod).rgb;
+    let zaxis = textureSampleLevel(material_textures, material_sampler, uv_p.xy, i32(mat_id), lod).rgb;
 
     return xaxis * b.x + yaxis * b.y + zaxis * b.z;
 }
@@ -271,7 +279,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
                 if (d < epsilon) {
                     let n = get_normal(p, cell_idx);
                     let mat_id = hit.mat_id;
-                    let albedo = triplanar_sample(p, n, mat_id);
+                    let albedo = triplanar_sample(p, n, mat_id, t);
                     let spec_factor = specular_factors[mat_id];
 
                     let light_dir = normalize(vec3<f32>(0.85, 1.0, -0.7));

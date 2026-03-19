@@ -101,7 +101,7 @@ impl MaterialRegistry
             } else {
                 0.05f32 // Default small specular highlight
             };
-            println!("Loading texture: {}.png (spec: {})", name, spec);
+            println!("Loading texture: {}.png", name);
             specular_factors.push(spec);
         }
 
@@ -141,6 +141,7 @@ impl GPUMaterials
     ) -> Self
     {
         let num_layers = registry.num_materials();
+        let mip_level_count = 11; // log2(1024) + 1
 
         let texture_extent = wgpu::Extent3d {
             width: 1024,
@@ -152,7 +153,7 @@ impl GPUMaterials
         let texture_array = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Material Texture Array"),
             size: texture_extent,
-            mip_level_count: 1,
+            mip_level_count,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba8UnormSrgb,
@@ -160,23 +161,35 @@ impl GPUMaterials
             view_formats: &[],
         });
 
-        // Upload each layer of the texture array
+        // Upload each layer and its mipmaps
         for (i, data) in registry.texture_datas.iter().enumerate() {
-            queue.write_texture(
-                wgpu::TexelCopyTextureInfo {
-                    texture: &texture_array,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d { x: 0, y: 0, z: i as u32 },
-                    aspect: wgpu::TextureAspect::All,
-                },
-                data,
-                wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(4 * 1024),
-                    rows_per_image: Some(1024),
-                },
-                wgpu::Extent3d { width: 1024, height: 1024, depth_or_array_layers: 1 },
-            );
+            let mut current_data = data.clone();
+            let mut width = 1024;
+            let mut height = 1024;
+
+            for level in 0..mip_level_count {
+                queue.write_texture(
+                    wgpu::TexelCopyTextureInfo {
+                        texture: &texture_array,
+                        mip_level: level,
+                        origin: wgpu::Origin3d { x: 0, y: 0, z: i as u32 },
+                        aspect: wgpu::TextureAspect::All,
+                    },
+                    &current_data,
+                    wgpu::TexelCopyBufferLayout {
+                        offset: 0,
+                        bytes_per_row: Some(4 * width),
+                        rows_per_image: Some(height),
+                    },
+                    wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+                );
+
+                if level < mip_level_count - 1 {
+                    current_data = generate_next_mip(&current_data, width, height);
+                    width = (width / 2).max(1);
+                    height = (height / 2).max(1);
+                }
+            }
         }
 
         let texture_view = texture_array.create_view(&wgpu::TextureViewDescriptor {
@@ -185,13 +198,14 @@ impl GPUMaterials
             ..Default::default()
         });
 
-        // Create a standard linear sampler for materials
+        // Create a linear sampler with mipmap filtering enabled
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("Material Sampler"),
             address_mode_u: wgpu::AddressMode::Repeat,
             address_mode_v: wgpu::AddressMode::Repeat,
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
 
@@ -264,6 +278,29 @@ fn load_png(path: &Path) -> (Vec<u8>, u32, u32)
     }
 
     (rgba_data, width, height)
+}
+
+/// Simple 2x2 box filter to generate the next mipmap level
+fn generate_next_mip(data: &[u8], width: u32, height: u32) -> Vec<u8>
+{
+    let new_width = (width / 2).max(1);
+    let new_height = (height / 2).max(1);
+    let mut new_data = vec![0u8; (new_width * new_height * 4) as usize];
+
+    for y in 0..new_height {
+        for x in 0..new_width {
+            for c in 0..4 {
+                // Average 2x2 pixels
+                let mut sum = 0u32;
+                sum += data[((y * 2 * width + x * 2) * 4 + c) as usize] as u32;
+                sum += data[((y * 2 * width + x * 2 + 1) * 4 + c) as usize] as u32;
+                sum += data[(((y * 2 + 1) * width + x * 2) * 4 + c) as usize] as u32;
+                sum += data[(((y * 2 + 1) * width + x * 2 + 1) * 4 + c) as usize] as u32;
+                new_data[((y * new_width + x) * 4 + c) as usize] = (sum / 4) as u8;
+            }
+        }
+    }
+    new_data
 }
 
 /// Tiles a smaller texture pattern to fill a larger destination buffer
