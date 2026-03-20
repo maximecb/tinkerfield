@@ -34,7 +34,7 @@ When a brush is selected and you are in Position mode:
 When a brush is selected and you are in Scale mode:
 - **I / K**: Scale along the world horizontal axis (X or Z) most aligned with your forward view.
 - **J / L**: Scale along the world horizontal axis (X or Z) most aligned with your right view.
-- **Y / H**: Scale vertically along the World Y axis.
+- **U / H**: Scale vertically along the World Y axis.
 - **Note**: For Box brushes, scaling expands from the minimum corner (the min corner stays fixed).
 
 ### Edit Modes
