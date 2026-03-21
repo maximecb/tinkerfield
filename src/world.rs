@@ -173,17 +173,6 @@ impl World
 
         world.player.update_basis();
 
-        // Add a default floor brush
-        world.add_brush(Brush {
-            pos: Vec3::new(0.0, -0.1, 0.0),
-            kind: KIND_BOX,
-            scale: Vec3::new(40.0, 0.2, 40.0),
-            material: 0,
-            rot: Quat::IDENTITY,
-            op: OP_ADD,
-            _pad: [0; 3],
-        });
-
         world
     }
 

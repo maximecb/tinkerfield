@@ -15,6 +15,8 @@ use winit::{
     window::{CursorGrabMode, Window, WindowId},
 };
 use materials::MaterialRegistry;
+use math::*;
+use world::Brush;
 
 #[derive(PartialEq)]
 enum EditMode
@@ -52,10 +54,25 @@ impl App
     fn new() -> Self
     {
         let now = Instant::now();
+
+        let mut world = world::World::new();
+        let materials = MaterialRegistry::load();
+
+        // Add a default floor brush
+        world.add_brush(Brush {
+            pos: Vec3::new(0.0, -0.05, 0.0),
+            kind: world::KIND_BOX,
+            scale: Vec3::new(40.0, 0.1, 40.0),
+            material: materials.id_from_name("grass_01"),
+            rot: Quat::IDENTITY,
+            op: world::OP_ADD,
+            _pad: [0; 3],
+        });
+
         Self {
             gpu_state: None,
-            world: world::World::new(),
-            materials: MaterialRegistry::load(),
+            world,
+            materials,
             start_time: now,
             last_update: now,
             frame_count: 0,

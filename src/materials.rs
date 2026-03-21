@@ -93,13 +93,13 @@ impl MaterialRegistry
 
             // Set specular highlights based on keywords in the filename
             let spec = if name.contains("metal") {
-                0.6f32 // Increased for better visibility
+                0.6f32
             } else if name.contains("glass") || name.contains("window") {
                 0.9f32
             } else if name.contains("concrete") {
-                0.2f32
+                0.1f32
             } else {
-                0.05f32 // Default small specular highlight
+                0.0
             };
             println!("Loading texture: {}.png", name);
             specular_factors.push(spec);

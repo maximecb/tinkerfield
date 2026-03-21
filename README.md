@@ -23,6 +23,7 @@ cargo run --release
   - If a brush is already selected, pressing **O** will cycle its type (Box, Cylinder, Sphere, Cone).
 - **Enter**: "Stamp" the current brush (duplicate it and keep the new one selected).
 - **Delete / Backspace**: Remove the selected brush.
+- **M**: Flip through different materials for the selected brush.
 
 ### Position Edit Mode ('P' key)
 When a brush is selected and you are in Position mode:
@@ -40,7 +41,7 @@ When a brush is selected and you are in Scale mode:
 ### Edit Modes
 These keys switch the editing mode for the currently selected brush:
 - **P**: Switch to Position mode (default).
-- **X**: Switch to Scale mode.
+- **X**: Switch to Scale/size mode.
 - **R**: Switch to Rotation mode (currently implemented in code but pending key bindings).
 
 ## Contributing
@@ -49,5 +50,5 @@ Contributions for algorithmic optimizations and new features welcome.
 However, note that smaller pull requests are more likely to get merged.
 Please avoid opening pull requests with major design changes without discussing the changes you want to make first.
 
-New textures welcome, as long as they are licensed under CC0. Textures should be
-in 24-bit TNG format.
+New textures welcome, as long as they are licensed under CC0 (public domain). Textures should be
+in 24-bit PNG format.
