@@ -160,6 +160,26 @@ impl App
                 }
             }
 
+            // Flip to the previous material
+            KeyN => {
+                if let Some(brush_id) = self.selected {
+                    let num_materials = self.materials.num_materials();
+                    let mut brush = self.world.remove_brush(brush_id);
+
+                    brush.material = if brush.material > 0 {
+                        brush.material - 1
+                    } else {
+                        num_materials - 1
+                    };
+                    let material_name = self.materials.material_name(brush.material);
+                    println!("Material: {} (material id={})", material_name, brush.material);
+
+                    self.selected = Some(self.world.add_brush(brush));
+                    self.upload_world();
+                    return;
+                }
+            }
+
             // Flip to the next material
             KeyM => {
                 if let Some(brush_id) = self.selected {

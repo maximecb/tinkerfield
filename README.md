@@ -23,7 +23,8 @@ cargo run --release
   - If a brush is already selected, pressing **O** will cycle its type (Box, Cylinder, Sphere, Cone).
 - **Enter**: "Stamp" the current brush (duplicate it and keep the new one selected).
 - **Delete / Backspace**: Remove the selected brush.
-- **M**: Flip through different materials for the selected brush.
+- **M**: Flip to the next material.
+- **N**: Flip to the previous material.
 
 ### Position Edit Mode ('P' key)
 When a brush is selected and you are in Position mode:
