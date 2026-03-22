@@ -213,7 +213,7 @@ fn triplanar_sample(p: vec3<f32>, n: vec3<f32>, mat_id: u32, t: f32) -> vec3<f32
     let texels_per_pixel = t * uniforms.pixel_size_at_1m * 512.0;
     let lod = max(0.0, log2(texels_per_pixel));
 
-    let xaxis = textureSampleLevel(material_textures, material_sampler, uv_p.yz, i32(mat_id), lod).rgb;
+    let xaxis = textureSampleLevel(material_textures, material_sampler, uv_p.zy, i32(mat_id), lod).rgb;
     let yaxis = textureSampleLevel(material_textures, material_sampler, uv_p.xz, i32(mat_id), lod).rgb;
     let zaxis = textureSampleLevel(material_textures, material_sampler, uv_p.xy, i32(mat_id), lod).rgb;
 
