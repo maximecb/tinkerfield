@@ -372,6 +372,8 @@ impl ApplicationHandler for App
 {
     fn resumed(&mut self, event_loop: &ActiveEventLoop)
     {
+        event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
+
         if self.gpu_state.is_some() {
             return;
         }
@@ -457,10 +459,19 @@ impl ApplicationHandler for App
                         Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
                         Err(e) => eprintln!("{:?}", e),
                     }
-                    gpu_state.window.request_redraw();
                 }
             }
             _ => {}
+        }
+    }
+
+    /// Called when the event loop is done processing events
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop)
+    {
+        // Request a redraw as soon as we've finished processing events
+        // This keeps the game loop running at maximum speed in Poll mode
+        if let Some(gpu_state) = self.gpu_state.as_ref() {
+            gpu_state.window.request_redraw();
         }
     }
 
