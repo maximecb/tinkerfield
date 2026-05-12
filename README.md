@@ -47,9 +47,11 @@ These keys switch the editing mode for the currently selected brush:
 
 ## Contributing
 
-Contributions for algorithmic optimizations and new features welcome.
+Contributions for algorithmic optimizations and new features are welcome.
 However, note that smaller pull requests are more likely to get merged.
-Please avoid opening pull requests with major design changes without discussing the changes you want to make first.
+Please avoid opening pull requests with major design changes without discussing the changes
+you would like to make first.
 
-New textures welcome, as long as they are licensed under CC0 (public domain). Textures should be
-in 24-bit PNG format.
+New textures welcome, we could particularly use more seamless materials, as long as they are
+licensed under CC0 (public domain). Textures should be in 24-bit PNG format, and at a
+resolution of 512 pixels per meter.
