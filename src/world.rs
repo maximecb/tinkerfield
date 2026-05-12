@@ -139,7 +139,10 @@ pub struct World
     pub grid: Vec<u32>,
     pub grid_indices: Vec<u16>,
 
+    // Minimum XYZ position for the grid
     pub grid_min: Vec3,
+
+    // Number of grid cells along each axis
     pub grid_size: [u32; 3],
 
     pub player: Player,
@@ -315,6 +318,10 @@ impl World
         for i in 0..count {
             let n = (self.grid[i] & 0xFF) as usize;
             let offset = total_indices;
+
+            // Ensure the offset fits in 24 bits
+            assert!(offset <= 0x00FFFFFF, "Grid index buffer offset overflow: {} exceeds 24 bits", offset);
+
             self.grid[i] = ((offset as u32) << 8) | (n as u32);
             total_indices += n;
         }
