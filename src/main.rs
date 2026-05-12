@@ -58,12 +58,23 @@ impl App
         let mut world = world::World::new();
         let materials = MaterialRegistry::load();
 
-        // Add a default floor brush
+        // Grass surface
         world.add_brush(Brush {
             pos: Vec3::new(0.0, -0.05, 0.0),
             kind: world::KIND_BOX,
             scale: Vec3::new(40.0, 0.1, 40.0),
             material: materials.id_from_name("grass_01"),
+            rot: Quat::IDENTITY,
+            op: world::OP_ADD,
+            _pad: [0; 3],
+        });
+
+        // Dirt under the grass
+        world.add_brush(Brush {
+            pos: Vec3::new(0.0, -8.05, 0.0),
+            kind: world::KIND_BOX,
+            scale: Vec3::new(40.0, 16.0, 40.0),
+            material: materials.id_from_name("dirt_01"),
             rot: Quat::IDENTITY,
             op: world::OP_ADD,
             _pad: [0; 3],
