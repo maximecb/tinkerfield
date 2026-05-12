@@ -32,7 +32,6 @@ impl MaterialRegistry
     {
         let start_time = Instant::now();
         let mut names = Vec::new();
-        let mut name_to_id = HashMap::new();
 
         // Read all files in the textures directory to collect names
         let entries = fs::read_dir("textures").expect("Could not read textures directory");
@@ -70,46 +69,84 @@ impl MaterialRegistry
             }
         });
 
+        // Map texture names to texture ids
+        let mut name_to_id: HashMap<String, u32> = HashMap::new();
         for (idx, name) in names.iter().enumerate() {
             name_to_id.insert(name.clone(), idx.try_into().unwrap());
         }
 
-        let mut texture_datas = Vec::new();
-        let mut specular_factors = Vec::new();
+        let num_textures = names.len();
+        let mut texture_datas = vec![Vec::new(); num_textures];
+        let mut specular_factors = vec![0.0f32; num_textures];
 
-        // Load textures based on the sorted names
-        for name in &names {
-            let path = Path::new("textures").join(format!("{}.png", name));
-            println!("Loading texture: {}.png", name);
+        // Parallel texture loading
+        use std::sync::{Arc, Mutex};
+        use std::sync::mpsc;
+        use std::thread;
 
-            // Load PNG pixels and dimensions
-            let (data, width, height) = load_png(&path);
+        let num_threads = thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1);
 
-            // Ensure the texture can be tiled perfectly into a 1024x1024 square
-            if 1024 % width != 0 || 1024 % height != 0 {
-                panic!("Texture size {}x{} in {:?} is not a divisor of 1024", width, height, path);
-            }
+        // Wrap names in indices for parallel processing
+        let tasks: Vec<(usize, String)> = names.iter().cloned().enumerate().collect();
+        let tasks = Arc::new(Mutex::new(tasks));
+        let (tx, rx) = mpsc::channel();
 
-            // Tile the texture to fill a 1024x1024 RGBA buffer
-            let tiled_data = tile_texture(&data, width, height, 1024, 1024);
-            texture_datas.push(tiled_data);
+        for _ in 0..num_threads {
+            let tasks = Arc::clone(&tasks);
+            let tx = tx.clone();
 
-            // Set specular highlights based on keywords in the filename
-            let spec = if name.contains("metal") {
-                0.6f32
-            } else if name.contains("glass") || name.contains("window") {
-                0.9f32
-            } else if name.contains("concrete") {
-                0.1f32
-            } else {
-                0.0
-            };
+            thread::spawn(move || {
+                loop {
+                    let task = {
+                        let mut tasks = tasks.lock().unwrap();
+                        tasks.pop()
+                    };
 
-            specular_factors.push(spec);
+                    let Some((idx, name)) = task else { break; };
+
+                    let path = Path::new("textures").join(format!("{}.png", name));
+                    println!("Loading texture: {}.png", name);
+
+                    // Load PNG pixels and dimensions
+                    let (data, width, height) = load_png(&path);
+
+                    // Ensure the texture can be tiled perfectly into a 1024x1024 square
+                    if 1024 % width != 0 || 1024 % height != 0 {
+                        panic!("Texture size {}x{} in {:?} is not a divisor of 1024", width, height, path);
+                    }
+
+                    // Tile the texture to fill a 1024x1024 RGBA buffer
+                    let tiled_data = tile_texture(&data, width, height, 1024, 1024);
+
+                    // Set specular highlights based on keywords in the filename
+                    let spec = if name.contains("metal") {
+                        0.6f32
+                    } else if name.contains("glass") || name.contains("window") {
+                        0.9f32
+                    } else if name.contains("concrete") {
+                        0.1f32
+                    } else {
+                        0.0
+                    };
+
+                    tx.send((idx, tiled_data, spec)).unwrap();
+                }
+            });
+        }
+
+        // Drop the original sender so the receiver loop terminates
+        drop(tx);
+
+        // Collect texture processing results
+        while let Ok((idx, data, spec)) = rx.recv() {
+            texture_datas[idx] = data;
+            specular_factors[idx] = spec;
         }
 
         let duration = start_time.elapsed();
-        println!("Loaded {} textures in {:.2?}", names.len(), duration);
+        println!("Loaded {} textures in {:.2?}", num_textures, duration);
 
         Self {
             texture_datas,
