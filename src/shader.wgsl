@@ -178,7 +178,6 @@ fn sdf_at_cell(p: vec3<f32>, cell_idx: u32) -> Hit {
             } else { // SUB
                 if (-d_brush > res.d) {
                     res.d = -d_brush;
-                    res.mat_id = b.material;
                 }
             }
         }

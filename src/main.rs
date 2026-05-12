@@ -162,6 +162,28 @@ impl App
                 self.upload_world();
             }
 
+            KeyC => {
+                let pos = self.world.player.position + self.world.player.forward * 1.0;
+
+                // Create a rotation that aligns the cylinder's local Y axis with the camera forward
+                let yaw_rad = self.world.player.yaw.to_radians();
+                let pitch_rad = self.world.player.pitch.to_radians();
+                let q_player = math::Quat::from_rotation_y(yaw_rad) * math::Quat::from_rotation_x(-pitch_rad);
+                let rotation = q_player * math::Quat::from_rotation_x(90.0f32.to_radians());
+
+                self.world.add_brush(world::Brush {
+                    pos,
+                    kind: world::KIND_CYLINDER,
+                    scale: math::Vec3::new(0.7, 5.0, 0.7),
+                    material: self.materials.id_from_name("metal_01"),
+                    rot: rotation,
+                    op: world::OP_SUB,
+                    _pad: [0; 3],
+                });
+
+                self.upload_world();
+            }
+
             Delete | Backspace => {
                 println!("delete key");
                 if let Some(brush_id) = self.selected {
