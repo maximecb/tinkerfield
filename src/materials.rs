@@ -106,30 +106,7 @@ impl MaterialRegistry
 
                     let Some((idx, name)) = task else { break; };
 
-                    let path = Path::new("textures").join(format!("{}.png", name));
-                    println!("Loading texture: {}.png", name);
-
-                    // Load PNG pixels and dimensions
-                    let (data, width, height) = load_png(&path);
-
-                    // Ensure the texture can be tiled perfectly into a 1024x1024 square
-                    if 1024 % width != 0 || 1024 % height != 0 {
-                        panic!("Texture size {}x{} in {:?} is not a divisor of 1024", width, height, path);
-                    }
-
-                    // Tile the texture to fill a 1024x1024 RGBA buffer
-                    let tiled_data = tile_texture(&data, width, height, 1024, 1024);
-
-                    // Set specular highlights based on keywords in the filename
-                    let spec = if name.contains("metal") {
-                        0.6f32
-                    } else if name.contains("glass") || name.contains("window") {
-                        0.9f32
-                    } else if name.contains("concrete") {
-                        0.1f32
-                    } else {
-                        0.0
-                    };
+                    let (tiled_data, spec) = MaterialRegistry::process_texture(&name);
 
                     tx.send((idx, tiled_data, spec)).unwrap();
                 }
@@ -146,7 +123,7 @@ impl MaterialRegistry
         }
 
         let duration = start_time.elapsed();
-        println!("Loaded {} textures in {:.2?}", num_textures, duration);
+        println!("Loaded {} textures in {:.0?}", num_textures, duration);
 
         Self {
             texture_datas,
@@ -154,6 +131,37 @@ impl MaterialRegistry
             names,
             name_to_id,
         }
+    }
+
+    /// Process a single texture: load from disk, tile it, and compute its specular factor
+    fn process_texture(name: &str) -> (Vec<u8>, f32)
+    {
+        let path = Path::new("textures").join(format!("{}.png", name));
+        println!("Loading texture: {}.png", name);
+
+        // Load PNG pixels and dimensions
+        let (data, width, height) = load_png(&path);
+
+        // Ensure the texture can be tiled perfectly into a 1024x1024 square
+        if 1024 % width != 0 || 1024 % height != 0 {
+            panic!("Texture size {}x{} in {:?} is not a divisor of 1024", width, height, path);
+        }
+
+        // Tile the texture to fill a 1024x1024 RGBA buffer
+        let tiled_data = tile_texture(&data, width, height, 1024, 1024);
+
+        // Set specular highlights based on keywords in the filename
+        let spec = if name.contains("metal") {
+            0.6f32
+        } else if name.contains("glass") || name.contains("window") {
+            0.9f32
+        } else if name.contains("concrete") {
+            0.1f32
+        } else {
+            0.0
+        };
+
+        (tiled_data, spec)
     }
 
     /// Get the total number of loaded materials
