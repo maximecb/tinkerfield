@@ -4,6 +4,8 @@ use std::path::Path;
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 
+use std::time::Instant;
+
 /// CPU-side registry that loads and tiles textures from disk once
 pub struct MaterialRegistry
 {
@@ -28,6 +30,7 @@ impl MaterialRegistry
     /// Load all PNG textures from the textures directory
     pub fn load() -> Self
     {
+        let start_time = Instant::now();
         let mut names = Vec::new();
         let mut name_to_id = HashMap::new();
 
@@ -101,9 +104,12 @@ impl MaterialRegistry
             } else {
                 0.0
             };
-            println!("Loading texture: {}.png", name);
+
             specular_factors.push(spec);
         }
+
+        let duration = start_time.elapsed();
+        println!("Loaded {} textures in {:.2?}", names.len(), duration);
 
         Self {
             texture_datas,
