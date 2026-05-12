@@ -231,6 +231,71 @@ fn intersect_aabb(ro: vec3<f32>, rd: vec3<f32>, b_min: vec3<f32>, b_max: vec3<f3
     return vec2<f32>(t_near, t_far);
 }
 
+fn trace_shadow(ro: vec3<f32>, rd: vec3<f32>, max_t: f32) -> f32 {
+    let grid_size = vec3<f32>(f32(world.grid_size_x), f32(world.grid_size_y), f32(world.grid_size_z));
+    let t_hit = intersect_aabb(ro, rd, world.grid_min, world.grid_min + grid_size);
+
+    var t = max(t_hit.x, 0.0);
+    if (t > t_hit.y || t > max_t) { return 1.0; }
+
+    let inv_rd = 1.0 / rd;
+    let delta_t = abs(inv_rd);
+    let step = vec3<i32>(sign(rd));
+
+    let p_start = ro + rd * (t + 0.001);
+    var ipos = vec3<i32>(floor(p_start - world.grid_min));
+    var t_max = (vec3<f32>(ipos) - (ro - world.grid_min) + 0.5 + vec3<f32>(step) * 0.5) * inv_rd;
+
+    // Simplified DDA traversal for shadow rays
+    for (var i = 0; i < 128; i++) {
+        if (ipos.x < 0 || ipos.y < 0 || ipos.z < 0 ||
+            ipos.x >= i32(world.grid_size_x) ||
+            ipos.y >= i32(world.grid_size_y) ||
+            ipos.z >= i32(world.grid_size_z)) {
+            break;
+        }
+
+        let cell_idx = (u32(ipos.y) * world.grid_size_z + u32(ipos.z)) * world.grid_size_x + u32(ipos.x);
+        let t_boundary = min(t_max.x, min(t_max.y, t_max.z));
+
+        if ((grid[cell_idx] & 0xFFu) > 0u) {
+            while (t < t_boundary - 0.001) {
+                let p = ro + rd * t;
+                let d = sdf_at_cell(p, cell_idx).d;
+
+                if (d < 0.001) { return 0.0; }
+                t += max(d, 0.01);
+                if (t > max_t) { return 1.0; }
+            }
+        }
+
+        t = t_boundary;
+
+        // Step DDA
+        if (t_max.x < t_max.y) {
+            if (t_max.x < t_max.z) {
+                t_max.x += delta_t.x;
+                ipos.x += step.x;
+            } else {
+                t_max.z += delta_t.z;
+                ipos.z += step.z;
+            }
+        } else {
+            if (t_max.y < t_max.z) {
+                t_max.y += delta_t.y;
+                ipos.y += step.y;
+            } else {
+                t_max.z += delta_t.z;
+                ipos.z += step.z;
+            }
+        }
+
+        if (t > max_t || t > t_hit.y) { break; }
+    }
+
+    return 1.0;
+}
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let ro = player.position;
@@ -283,9 +348,11 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
                     let spec_factor = specular_factors[mat_id];
 
                     let light_dir = normalize(vec3<f32>(0.85, 1.0, -0.7));
-                    let diff = max(dot(n, light_dir), 0.0);
+                    let shadow = trace_shadow(p + n * 0.01, light_dir, 50.0);
+
+                    let diff = max(dot(n, light_dir), 0.0) * shadow;
                     let half_dir = normalize(light_dir - rd);
-                    let spec_highlight = pow(max(dot(n, half_dir), 0.0), 32.0);
+                    let spec_highlight = pow(max(dot(n, half_dir), 0.0), 32.0) * shadow;
                     let ambient = 0.15;
 
                     let color = albedo * (diff + ambient) + vec3<f32>(spec_factor) * spec_highlight;
