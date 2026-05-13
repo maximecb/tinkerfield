@@ -11,7 +11,7 @@ pub struct Uniforms
     pub time: f32,
     pub aspect_ratio: f32,
     pub pixel_size_at_1m: f32,
-    pub _padding: f32,
+    pub selected_id: i32,
 }
 
 pub struct GPUWorld
@@ -364,7 +364,7 @@ impl GPUState
         }
     }
 
-    pub fn render(&mut self, start_time: &Instant, focal_length: f32)
+    pub fn render(&mut self, start_time: &Instant, focal_length: f32, selected_id: i32)
     {
         let size = self.window.inner_size();
         let pixel_size_at_1m = (2.0 / size.height as f32) / focal_length;
@@ -374,7 +374,7 @@ impl GPUState
             time: start_time.elapsed().as_secs_f32(),
             aspect_ratio: size.width as f32 / size.height as f32,
             pixel_size_at_1m,
-            _padding: 0.0,
+            selected_id,
         };
         self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
 

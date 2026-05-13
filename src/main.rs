@@ -511,7 +511,9 @@ impl ApplicationHandler for App
                 if let Some(gpu_state) = self.gpu_state.as_mut() {
                     self.world.upload_player(&gpu_state.queue, &gpu_state.gpu_world);
 
-                    gpu_state.render(&self.start_time, self.world.player.focal_length);
+                    // Get the selected brush ID
+                    let selected_id = self.selected.map(|id| id as i32).unwrap_or(-1);
+                    gpu_state.render(&self.start_time, self.world.player.focal_length, selected_id);
                 }
             }
             _ => {}
