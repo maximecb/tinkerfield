@@ -217,6 +217,10 @@ impl GPUState
             .await
             .unwrap();
 
+        device.on_uncaptured_error(std::sync::Arc::new(|err| {
+            eprintln!("wgpu uncaptured GPU error: {err}");
+        }));
+
         let surface_caps = surface.get_capabilities(&adapter);
         let surface_format = surface_caps
             .formats
@@ -394,6 +398,7 @@ impl GPUState
                 return;
             }
             wgpu::CurrentSurfaceTexture::Occluded => {
+                eprintln!("Surface occluded");
                 return;
             }
             wgpu::CurrentSurfaceTexture::Validation => {
