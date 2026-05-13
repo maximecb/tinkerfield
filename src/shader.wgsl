@@ -318,6 +318,33 @@ fn ray_march(ro: vec3<f32>, rd: vec3<f32>, max_t: f32) -> RayResult {
     return res;
 }
 
+// Sphere-traces just the selected brush and returns the minimum SDF distance
+// encountered along the ray. Used for the selection glow/halo effect.
+fn min_dist_to_brush(ro: vec3<f32>, rd: vec3<f32>, brush_idx: u32) -> f32 {
+    let b = brushes[brush_idx];
+
+    // Bounding sphere cull: skip the march entirely if the ray misses the
+    // brush by more than the glow radius (0.5 world units).
+    let oc = ro - b.pos;
+    let bounding_r = length(b.scale) * 0.5 + 0.5;
+    let b_dot = dot(oc, rd);
+    let disc = b_dot * b_dot - (dot(oc, oc) - bounding_r * bounding_r);
+    if (disc < 0.0) { return 1e10; }
+
+    var t = max(0.0, -b_dot - sqrt(disc));
+    var min_d = 1e10;
+
+    for (var i = 0; i < 48; i++) {
+        if (t > 150.0) { break; }
+        let d = sdf_brush(ro + rd * t, brush_idx);
+        if (d < min_d) { min_d = d; }
+        if (d < 0.001) { break; }
+        t += max(d, 0.005);
+    }
+
+    return min_d;
+}
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let ro = player.position;
@@ -325,77 +352,41 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let res = ray_march(ro, rd, 150.0);
 
-    // Declare t before the early return so fwidth(t) is well-defined in 2x2 quads
-    // that straddle the object/sky boundary (sky pixels contribute t = 150.0).
-    let t = res.t;
-
     if (!res.hit) {
-        // Sky gradient
         let sky = mix(vec3<f32>(0.5, 0.8, 1.0), vec3<f32>(0.1, 0.4, 0.9), in.uv.y * 0.5 + 0.5);
-        return vec4<f32>(sky, 1.0);
+        var color = sky;
+
+        if (uniforms.selected_id >= 0) {
+            let min_d = min_dist_to_brush(ro, rd, u32(uniforms.selected_id));
+            let glow = exp(-max(min_d, 0.0) * 10.0);
+            let pulse = max(0.0, sin(uniforms.time * 3.0));
+            color += vec3<f32>(1.0, 1.0, 1.0) * glow * (0.3 + pulse * 0.4);
+        }
+
+        return vec4<f32>(color, 1.0);
     }
 
+    let t = res.t;
     let p = ro + rd * t;
-    let cell_idx = res.cell_idx;
-    let mat_id = res.mat_id;
-
-    let n = get_normal(p, cell_idx);
-    let albedo = triplanar_sample(p, n, mat_id, t);
-    let spec_factor = specular_factors[mat_id];
+    let n = get_normal(p, res.cell_idx);
+    let albedo = triplanar_sample(p, n, res.mat_id, t);
+    let spec_factor = specular_factors[res.mat_id];
 
     let light_dir = normalize(vec3<f32>(0.85, 1.0, -0.7));
     let shadow_res = ray_march(p + n * 0.01, light_dir, 50.0);
-    var shadow = 1.0;
-    if (shadow_res.hit) {
-        shadow = 0.0;
-    }
+    let shadow = select(0.0, 1.0, !shadow_res.hit);
 
     let diff = max(dot(n, light_dir), 0.0) * shadow;
-    let half_dir = normalize(light_dir - rd);
-    let spec_highlight = pow(max(dot(n, half_dir), 0.0), 32.0) * shadow;
-    let ambient = 0.15;
+    let spec_highlight = pow(max(dot(n, normalize(light_dir - rd)), 0.0), 32.0) * shadow;
 
-    var color = albedo * (diff + ambient) + vec3<f32>(spec_factor) * spec_highlight;
+    var color = albedo * (diff + 0.15) + vec3<f32>(spec_factor) * spec_highlight;
 
-    // If an object is currently selected, highlight the edge of it
-    if (uniforms.selected_id >= 0) {
-        let bid = u32(uniforms.selected_id);
-        let sel_d = sdf_brush(p, bid);
-        if (abs(sel_d) < 0.05) {
-            let b_sel = brushes[bid];
-            var edge = 0.0;
-
-            // Determine if this pixel is on a flat face.
-            // For boxes all faces are flat. For cylinders/cones the caps are flat
-            // (local normal along Y) while the sides are curved.
-            // Transform the surface normal into brush local space to check.
-            let q_inv = vec4<f32>(-b_sel.rot.xyz, b_sel.rot.w);
-            let n_local = qrot(q_inv, n);
-            let on_flat_face = b_sel.kind == 0u || (b_sel.kind != 2u && abs(n_local.y) > 0.9);
-
-            if (on_flat_face) {
-                // Flat face: tangent-offset approach. Zero curvature means offsets
-                // stay at SDF≈0 across the face interior and only go positive at
-                // geometric edges — clean signal with no false positives.
-                let w = t * uniforms.pixel_size_at_1m * 4.0;
-                let t1 = normalize(cross(n, select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(n.y) > 0.9)));
-                let t2 = cross(n, t1);
-                let max_d = max(
-                    max(sdf_brush(p + t1 * w, bid), sdf_brush(p - t1 * w, bid)),
-                    max(sdf_brush(p + t2 * w, bid), sdf_brush(p - t2 * w, bid))
-                );
-                edge = clamp(max_d / w, 0.0, 1.0);
-            } else {
-                // Curved face (sphere surface, cylinder/cone sides): tangent offsets
-                // always land outside a convex surface by the curvature amount so they
-                // can't distinguish the silhouette from the interior. Use the rim instead.
-                edge = pow(1.0 - abs(dot(n, -rd)), 4.0);
-            }
-
-            if (edge > 0.1) {
-                color = vec3<f32>(1.0, 1.0, 1.0);
-            }
-        }
+    // Selection glow: skip pixels where the ray hit the selected object itself.
+    if (uniforms.selected_id >= 0 && abs(sdf_brush(p, u32(uniforms.selected_id))) >= 0.05) {
+        let min_d = min_dist_to_brush(ro, rd, u32(uniforms.selected_id));
+        let glow = exp(-max(min_d, 0.0) * 10.0);
+        let pulse = max(0.0, sin(uniforms.time * 3.0));
+        color += vec3<f32>(1.0, 1.0, 1.0) * glow * (0.3 + pulse * 0.4);
     }
 
     return vec4<f32>(color, 1.0);
