@@ -137,28 +137,38 @@ impl App
         if self.key_down.contains(&ControlLeft) || self.key_down.contains(&SuperLeft) {
             match key {
                 // Copy selected object
-                KeyO => {
+                KeyC => {
                     if let Some(brush_id) = self.selected {
                         let brush = self.world.get_brush(brush_id);
                         self.copied = Some(brush);
                     }
                 }
 
+                // Paste copied object in front of player
+                KeyV => {
+                    if let Some(copied) = self.copied.clone() {
+                        let mut brush = copied;
+                        let mut pos = self.world.player.position + self.world.player.forward * 3.0;
+                        pos.x = (pos.x * 10.0).round() / 10.0;
+                        pos.y = (pos.y * 10.0).round() / 10.0;
+                        pos.z = (pos.z * 10.0).round() / 10.0;
+                        brush.pos = pos;
+                        let brush_id = self.world.add_brush(brush);
+                        self.selected = Some(brush_id);
+                        self.edit_mode = EditMode::Position;
+                        self.upload_world();
+                    }
+                }
+
                 _ => {}
             }
+
+            return;
         }
 
         match key {
+            // Create a new object
             KeyO => {
-                // If a brush is currently selected
-                if let Some(brush_id) = self.selected {
-                    let mut brush = self.world.remove_brush(brush_id);
-                    brush.kind = (brush.kind + 1) % NUM_BRUSH_KINDS;
-                    self.selected = Some(self.world.add_brush(brush));
-                    self.upload_world();
-                    return;
-                }
-
                 let mut pos = self.world.player.position + self.world.player.forward * 3.0;
 
                 // Align the brush position to the nearest multiple of 0.1
@@ -204,8 +214,8 @@ impl App
                 self.upload_world();
             }
 
+            // Delete selected object
             Delete | Backspace => {
-                println!("delete key");
                 if let Some(brush_id) = self.selected {
                     self.world.remove_brush(brush_id);
                     self.upload_world();
@@ -244,18 +254,6 @@ impl App
                     println!("Material: {} (material id={})", material_name, brush.material);
 
                     self.selected = Some(self.world.add_brush(brush));
-                    self.upload_world();
-                    return;
-                }
-            }
-
-            Enter => {
-                // Add the brush to the world but keep a selected copy
-                if let Some(brush_id) = self.selected {
-                    let brush = self.world.remove_brush(brush_id);
-                    self.world.add_brush(brush);
-                    self.selected = Some(self.world.add_brush(brush));
-                    self.edit_mode = EditMode::Position;
                     self.upload_world();
                     return;
                 }
