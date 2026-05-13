@@ -406,18 +406,21 @@ impl World
 
         if !self.brushes.is_empty() {
             let bytes = self.brushes.len() * std::mem::size_of::<Brush>();
+            assert!(bytes as u64 <= gpu.brush_buffer.size(), "Brush buffer overflow: {} bytes > {} buffer size", bytes, gpu.brush_buffer.size());
             queue.write_buffer(&gpu.brush_buffer, 0, bytemuck::cast_slice(&self.brushes));
             total_bytes += bytes;
         }
 
         if !self.grid.is_empty() {
             let bytes = self.grid.len() * std::mem::size_of::<u32>();
+            assert!(bytes as u64 <= gpu.grid_buffer.size(), "Grid buffer overflow: {} bytes > {} buffer size", bytes, gpu.grid_buffer.size());
             queue.write_buffer(&gpu.grid_buffer, 0, bytemuck::cast_slice(&self.grid));
             total_bytes += bytes;
         }
 
         if !self.grid_indices.is_empty() {
             let bytes = self.grid_indices.len() * std::mem::size_of::<u16>();
+            assert!(bytes as u64 <= gpu.index_buffer.size(), "Index buffer overflow: {} bytes > {} buffer size", bytes, gpu.index_buffer.size());
             queue.write_buffer(&gpu.index_buffer, 0, bytemuck::cast_slice(&self.grid_indices));
             total_bytes += bytes;
         }
