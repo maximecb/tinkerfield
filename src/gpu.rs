@@ -370,6 +370,9 @@ impl GPUState
 
     pub fn render(&mut self, start_time: &Instant, focal_length: f32, selected_id: i32)
     {
+        // Flush any pending GPU errors from the previous frame so the
+        // uncaptured error handler fires promptly if the GPU timed out.
+        let _ = self.device.poll(wgpu::PollType::Poll);
         let size = self.window.inner_size();
         let pixel_size_at_1m = (2.0 / size.height as f32) / focal_length;
 

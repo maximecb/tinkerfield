@@ -277,8 +277,11 @@ fn ray_march(ro: vec3<f32>, rd: vec3<f32>, max_t: f32) -> RayResult {
                 let hit = sdf_at_cell(p, cell_idx);
                 let d = hit.d;
 
-                // Calculate epsilon as a fraction of the pixel size at distance t
-                let epsilon = t * uniforms.pixel_size_at_1m * 0.125;
+                // Calculate epsilon as a fraction of the pixel size at distance t.
+                // The 0.0001 floor prevents a zero step size when t≈0, which would
+                // cause an infinite loop where two surfaces intersect (e.g. a cube
+                // partially embedded in the ground).
+                let epsilon = max(t * uniforms.pixel_size_at_1m * 0.125, 0.0001);
 
                 if (d < epsilon) {
                     res.t = t;
