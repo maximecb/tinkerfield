@@ -364,10 +364,18 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
             let b_sel = brushes[bid];
             var edge = 0.0;
 
-            if (b_sel.kind == 0u) {
-                // BOX: tangent-offset approach. Flat faces have zero curvature so
-                // offsets stay at SDF=0 in the interior and only go positive at
-                // geometric edges — no false positives, no curvature correction needed.
+            // Determine if this pixel is on a flat face.
+            // For boxes all faces are flat. For cylinders/cones the caps are flat
+            // (local normal along Y) while the sides are curved.
+            // Transform the surface normal into brush local space to check.
+            let q_inv = vec4<f32>(-b_sel.rot.xyz, b_sel.rot.w);
+            let n_local = qrot(q_inv, n);
+            let on_flat_face = b_sel.kind == 0u || (b_sel.kind != 2u && abs(n_local.y) > 0.9);
+
+            if (on_flat_face) {
+                // Flat face: tangent-offset approach. Zero curvature means offsets
+                // stay at SDF≈0 across the face interior and only go positive at
+                // geometric edges — clean signal with no false positives.
                 let w = t * uniforms.pixel_size_at_1m * 4.0;
                 let t1 = normalize(cross(n, select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(n.y) > 0.9)));
                 let t2 = cross(n, t1);
@@ -377,11 +385,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
                 );
                 edge = clamp(max_d / w, 0.0, 1.0);
             } else {
-                // CURVED SHAPES (sphere, cylinder, cone): the tangent-offset approach
-                // can't detect silhouettes because a convex surface always pushes tangent
-                // offsets outside by exactly the curvature amount — no exit transition.
-                // Use the rim instead: dot(n, -rd) is 0 at the silhouette and 1 face-on,
-                // giving a smooth outline that tightens toward the visible edge.
+                // Curved face (sphere surface, cylinder/cone sides): tangent offsets
+                // always land outside a convex surface by the curvature amount so they
+                // can't distinguish the silhouette from the interior. Use the rim instead.
                 edge = pow(1.0 - abs(dot(n, -rd)), 4.0);
             }
 
