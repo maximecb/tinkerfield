@@ -192,6 +192,21 @@ impl App
                 self.upload_world();
             }
 
+            // Delete selected object
+            Delete | Backspace => {
+                if let Some(brush_id) = self.selected {
+                    self.world.remove_brush(brush_id);
+                    self.upload_world();
+                    self.selected = None;
+                }
+            }
+
+            // Unselect object
+            Enter => {
+                self.selected = None;
+                //self.upload_world();
+            }
+
             KeyC => {
                 let pos = self.world.player.position + self.world.player.forward * 1.0;
 
@@ -212,15 +227,6 @@ impl App
                 });
 
                 self.upload_world();
-            }
-
-            // Delete selected object
-            Delete | Backspace => {
-                if let Some(brush_id) = self.selected {
-                    self.world.remove_brush(brush_id);
-                    self.upload_world();
-                    self.selected = None;
-                }
             }
 
             // Flip to the previous material
