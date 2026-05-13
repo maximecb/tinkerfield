@@ -207,6 +207,7 @@ impl App
                 //self.upload_world();
             }
 
+            // Subtract a cylinder in front of the player
             KeyC => {
                 let pos = self.world.player.position + self.world.player.forward * 1.0;
 
@@ -227,6 +228,18 @@ impl App
                 });
 
                 self.upload_world();
+            }
+
+            // Switch the type of the selected object
+            KeyT => {
+                // If a brush is currently selected
+                if let Some(brush_id) = self.selected {
+                    let mut brush = self.world.remove_brush(brush_id);
+                    brush.kind = (brush.kind + 1) % NUM_BRUSH_KINDS;
+                    self.selected = Some(self.world.add_brush(brush));
+                    self.upload_world();
+                    return;
+                }
             }
 
             // Flip to the previous material
