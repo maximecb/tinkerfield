@@ -380,7 +380,26 @@ impl GPUState
 
         let output = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
-            _ => return,
+            wgpu::CurrentSurfaceTexture::Outdated => {
+                eprintln!("Surface outdated — reconfiguring");
+                self.surface.configure(&self.device, &self.config);
+                return;
+            }
+            wgpu::CurrentSurfaceTexture::Lost => {
+                eprintln!("Surface lost");
+                return;
+            }
+            wgpu::CurrentSurfaceTexture::Timeout => {
+                eprintln!("Surface timeout");
+                return;
+            }
+            wgpu::CurrentSurfaceTexture::Occluded => {
+                return;
+            }
+            wgpu::CurrentSurfaceTexture::Validation => {
+                eprintln!("Surface validation error — GPU likely rejected the previous frame");
+                return;
+            }
         };
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
