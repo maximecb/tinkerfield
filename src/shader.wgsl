@@ -357,6 +357,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     var color = albedo * (diff + ambient) + vec3<f32>(spec_factor) * spec_highlight;
 
+    // If an object is currently selected, highlight the edge of it
     if (uniforms.selected_id >= 0) {
         let bid = u32(uniforms.selected_id);
         let sel_d = sdf_brush(p, bid);
