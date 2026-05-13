@@ -361,25 +361,31 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         let bid = u32(uniforms.selected_id);
         let sel_d = sdf_brush(p, bid);
         if (abs(sel_d) < 0.05) {
-            // Sample the brush SDF at tangent-plane offsets equal to outline_pixels in
-            // screen space. If any offset exits the brush (SDF > 0) we are within
-            // outline_pixels of a visual edge, regardless of shape or view angle.
-            let outline_pixels = 6.0;
-            let w = t * uniforms.pixel_size_at_1m * outline_pixels;
+            let b_sel = brushes[bid];
+            var edge = 0.0;
 
-            let t1 = normalize(cross(n, select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(n.y) > 0.9)));
-            let t2 = cross(n, t1);
+            if (b_sel.kind == 0u) {
+                // BOX: tangent-offset approach. Flat faces have zero curvature so
+                // offsets stay at SDF=0 in the interior and only go positive at
+                // geometric edges — no false positives, no curvature correction needed.
+                let w = t * uniforms.pixel_size_at_1m * 4.0;
+                let t1 = normalize(cross(n, select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(n.y) > 0.9)));
+                let t2 = cross(n, t1);
+                let max_d = max(
+                    max(sdf_brush(p + t1 * w, bid), sdf_brush(p - t1 * w, bid)),
+                    max(sdf_brush(p + t2 * w, bid), sdf_brush(p - t2 * w, bid))
+                );
+                edge = clamp(max_d / w, 0.0, 1.0);
+            } else {
+                // CURVED SHAPES (sphere, cylinder, cone): the tangent-offset approach
+                // can't detect silhouettes because a convex surface always pushes tangent
+                // offsets outside by exactly the curvature amount — no exit transition.
+                // Use the rim instead: dot(n, -rd) is 0 at the silhouette and 1 face-on,
+                // giving a smooth outline that tightens toward the visible edge.
+                edge = pow(1.0 - abs(dot(n, -rd)), 4.0);
+            }
 
-            let max_d = max(
-                max(sdf_brush(p + t1 * w, bid), sdf_brush(p - t1 * w, bid)),
-                max(sdf_brush(p + t2 * w, bid), sdf_brush(p - t2 * w, bid))
-            );
-
-            let edge = clamp(max_d / w, 0.0, 1.0);
-            if (edge > 0.05) {
-                //let pulse = max(0.0, sin(uniforms.time * 3.0));
-                //color = mix(color, vec3<f32>(0.2, 0.6, 1.0), edge * (0.8 + pulse * 0.4));
-
+            if (edge > 0.1) {
                 color = vec3<f32>(1.0, 1.0, 1.0);
             }
         }
