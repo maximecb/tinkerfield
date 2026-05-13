@@ -1,5 +1,8 @@
 # TinkerField
 
+This is a simple game engine / construction game based on signed
+distance fields.
+
 Dependencies:
 - The [Rust toolchain](https://www.rust-lang.org/tools/install)
 - wgpu, winit, png crates

@@ -317,11 +317,11 @@ impl GPUState
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[
-                    &uniform_bind_group_layout,
-                    &gpu_world.bind_group_layout,
-                    &material_bind_group_layout,
+                    Some(&uniform_bind_group_layout),
+                    Some(&gpu_world.bind_group_layout),
+                    Some(&material_bind_group_layout),
                 ],
-                push_constant_ranges: &[],
+                immediate_size: 0,
             });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -346,7 +346,7 @@ impl GPUState
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -364,7 +364,7 @@ impl GPUState
         }
     }
 
-    pub fn render(&mut self, start_time: &Instant, focal_length: f32) -> Result<(), wgpu::SurfaceError>
+    pub fn render(&mut self, start_time: &Instant, focal_length: f32)
     {
         let size = self.window.inner_size();
         let pixel_size_at_1m = (2.0 / size.height as f32) / focal_length;
@@ -378,7 +378,10 @@ impl GPUState
         };
         self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
 
-        let output = self.surface.get_current_texture()?;
+        let output = match self.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
+            _ => return,
+        };
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
@@ -403,6 +406,7 @@ impl GPUState
             depth_stencil_attachment: None,
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
@@ -414,7 +418,5 @@ impl GPUState
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
-
-        Ok(())
     }
 }

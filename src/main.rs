@@ -487,11 +487,7 @@ impl ApplicationHandler for App
                 if let Some(gpu_state) = self.gpu_state.as_mut() {
                     self.world.upload_player(&gpu_state.queue, &gpu_state.gpu_world);
 
-                    match gpu_state.render(&self.start_time, self.world.player.focal_length) {
-                        Ok(_) => {}
-                        Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
-                        Err(e) => eprintln!("{:?}", e),
-                    }
+                    gpu_state.render(&self.start_time, self.world.player.focal_length);
                 }
             }
             _ => {}
