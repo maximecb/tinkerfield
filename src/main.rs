@@ -40,10 +40,14 @@ struct App
     frame_count: u32,
     last_fps_print: Instant,
 
+    /// Keys that are currently pressed
     key_down: HashSet<KeyCode>,
 
     /// Currently selected brush
     selected: Option<u16>,
+
+    /// Copied brush
+    copied: Option<Brush>,
 
     /// Current brush edit mode
     edit_mode: EditMode,
@@ -90,6 +94,7 @@ impl App
             last_fps_print: now,
             key_down: HashSet::new(),
             selected: None,
+            copied: None,
             edit_mode: EditMode::Position,
         }
     }
@@ -128,6 +133,21 @@ impl App
         use crate::math::Vec3;
         use KeyCode::*;
 
+        // Ctrl + Key
+        if self.key_down.contains(&ControlLeft) || self.key_down.contains(&SuperLeft) {
+            match key {
+                // Copy selected object
+                KeyO => {
+                    if let Some(brush_id) = self.selected {
+                        let brush = self.world.get_brush(brush_id);
+                        self.copied = Some(brush);
+                    }
+                }
+
+                _ => {}
+            }
+        }
+
         match key {
             KeyO => {
                 // If a brush is currently selected
@@ -146,7 +166,7 @@ impl App
                 pos.y = (pos.y * 10.0).round() / 10.0;
                 pos.z = (pos.z * 10.0).round() / 10.0;
 
-                let brush_id = self.world.add_brush(world::Brush {
+                let brush_id = self.world.add_brush(Brush {
                     pos,
                     kind: world::KIND_BOX,
                     scale: math::Vec3::new(1.0, 1.0, 1.0),
@@ -171,7 +191,7 @@ impl App
                 let q_player = math::Quat::from_rotation_y(yaw_rad) * math::Quat::from_rotation_x(-pitch_rad);
                 let rotation = q_player * math::Quat::from_rotation_x(90.0f32.to_radians());
 
-                self.world.add_brush(world::Brush {
+                self.world.add_brush(Brush {
                     pos,
                     kind: world::KIND_CYLINDER,
                     scale: math::Vec3::new(0.7, 5.0, 0.7),

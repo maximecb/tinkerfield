@@ -194,6 +194,13 @@ impl World
         self.player.position += self.player.right * side_dist;
     }
 
+    /// Get a copy of the brush with the given id
+    pub fn get_brush(&mut self, index: u16) -> Brush
+    {
+        assert!((index as usize) < self.brushes.len());
+        self.brushes[index as usize]
+    }
+
     /// Remove a brush from the world
     pub fn remove_brush(&mut self, index: u16) -> Brush
     {
