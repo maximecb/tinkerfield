@@ -2,6 +2,7 @@ struct Uniforms {
     time: f32,
     aspect_ratio: f32,
     pixel_size_at_1m: f32,
+    selected_id: i32,
 };
 
 struct Brush {
@@ -324,13 +325,16 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let res = ray_march(ro, rd, 150.0);
 
+    // Declare t before the early return so fwidth(t) is well-defined in 2x2 quads
+    // that straddle the object/sky boundary (sky pixels contribute t = 150.0).
+    let t = res.t;
+
     if (!res.hit) {
         // Sky gradient
         let sky = mix(vec3<f32>(0.5, 0.8, 1.0), vec3<f32>(0.1, 0.4, 0.9), in.uv.y * 0.5 + 0.5);
         return vec4<f32>(sky, 1.0);
     }
 
-    let t = res.t;
     let p = ro + rd * t;
     let cell_idx = res.cell_idx;
     let mat_id = res.mat_id;
@@ -351,6 +355,35 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let spec_highlight = pow(max(dot(n, half_dir), 0.0), 32.0) * shadow;
     let ambient = 0.15;
 
-    let color = albedo * (diff + ambient) + vec3<f32>(spec_factor) * spec_highlight;
+    var color = albedo * (diff + ambient) + vec3<f32>(spec_factor) * spec_highlight;
+
+    if (uniforms.selected_id >= 0) {
+        let bid = u32(uniforms.selected_id);
+        let sel_d = sdf_brush(p, bid);
+        if (abs(sel_d) < 0.05) {
+            // Sample the brush SDF at tangent-plane offsets equal to outline_pixels in
+            // screen space. If any offset exits the brush (SDF > 0) we are within
+            // outline_pixels of a visual edge, regardless of shape or view angle.
+            let outline_pixels = 6.0;
+            let w = t * uniforms.pixel_size_at_1m * outline_pixels;
+
+            let t1 = normalize(cross(n, select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(n.y) > 0.9)));
+            let t2 = cross(n, t1);
+
+            let max_d = max(
+                max(sdf_brush(p + t1 * w, bid), sdf_brush(p - t1 * w, bid)),
+                max(sdf_brush(p + t2 * w, bid), sdf_brush(p - t2 * w, bid))
+            );
+
+            let edge = clamp(max_d / w, 0.0, 1.0);
+            if (edge > 0.05) {
+                //let pulse = max(0.0, sin(uniforms.time * 3.0));
+                //color = mix(color, vec3<f32>(0.2, 0.6, 1.0), edge * (0.8 + pulse * 0.4));
+
+                color = vec3<f32>(1.0, 1.0, 1.0);
+            }
+        }
+    }
+
     return vec4<f32>(color, 1.0);
 }
