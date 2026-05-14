@@ -66,7 +66,7 @@ impl App
         world.add_brush(Brush {
             pos: Vec3::new(0.0, -0.05, 0.0),
             kind: world::KIND_BOX,
-            scale: Vec3::new(40.0, 0.1, 40.0),
+            scale: Vec3::new(60.0, 0.1, 60.0),
             material: materials.id_from_name("grass_01"),
             rot: Quat::IDENTITY,
             op: world::OP_ADD,
@@ -77,7 +77,7 @@ impl App
         world.add_brush(Brush {
             pos: Vec3::new(0.0, -8.05, 0.0),
             kind: world::KIND_BOX,
-            scale: Vec3::new(40.0, 16.0, 40.0),
+            scale: Vec3::new(60.0, 16.0, 60.0),
             material: materials.id_from_name("dirt_01"),
             rot: Quat::IDENTITY,
             op: world::OP_ADD,
@@ -228,6 +228,16 @@ impl App
                 });
 
                 self.upload_world();
+            }
+
+            // Subtract the selected object from the world
+            KeyQ => {
+                if let Some(brush_id) = self.selected {
+                    let mut brush = self.world.remove_brush(brush_id);
+                    brush.op = world::OP_SUB;
+                    self.selected = Some(self.world.add_brush(brush));
+                    self.upload_world();
+                }
             }
 
             // Switch the type of the selected object
