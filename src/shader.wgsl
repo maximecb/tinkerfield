@@ -197,7 +197,7 @@ fn get_normal(p: vec3<f32>, cell_idx: u32) -> vec3<f32> {
     );
 }
 
-fn triplanar_sample(p: vec3<f32>, n: vec3<f32>, mat_id: u32) -> vec3<f32> {
+fn triplanar_sample(p: vec3<f32>, n: vec3<f32>, mat_id: u32, t: f32) -> vec3<f32> {
     let blending = abs(n);
     let b = blending / (blending.x + blending.y + blending.z);
 
@@ -208,15 +208,29 @@ fn triplanar_sample(p: vec3<f32>, n: vec3<f32>, mat_id: u32) -> vec3<f32> {
     let uv_y = uv_p.xz;
     let uv_z = uv_p.xy;
 
-    // Negative LOD bias: scale gradients down to get sharper textures.
-    // textureSampleGrad uses actual screen-space derivatives, which are larger
-    // than the simple t*pixel_size_at_1m estimate for oblique viewing angles
-    // (e.g. a shallow look at the ground sweeps a large depth range per pixel,
-    // inflating dpdy and thus the mip level). 0.5 = one mip level sharper.
-    let lod_bias = 0.5;
-    let xaxis = textureSampleGrad(material_textures, material_sampler, uv_x, i32(mat_id), dpdx(uv_x) * lod_bias, dpdy(uv_x) * lod_bias).rgb;
-    let yaxis = textureSampleGrad(material_textures, material_sampler, uv_y, i32(mat_id), dpdx(uv_y) * lod_bias, dpdy(uv_y) * lod_bias).rgb;
-    let zaxis = textureSampleGrad(material_textures, material_sampler, uv_z, i32(mat_id), dpdx(uv_z) * lod_bias, dpdy(uv_z) * lod_bias).rgb;
+    // Desired texels per screen pixel, matching the old textureSampleLevel formula:
+    // log2(t * pixel_size_at_1m * 512). We normalize each projection's gradient pair
+    // to this footprint so the base LOD stays distance-driven, while the gradient
+    // direction is preserved so textureSampleGrad can still apply anisotropic
+    // filtering. The 0.001 floor prevents division by zero for degenerate projections
+    // (e.g. the X-axis UV on a Z-facing wall, where dpdx(p.z) == 0).
+    let texels_per_pixel = max(1.0, t * uniforms.pixel_size_at_1m * 512.0);
+
+    let dx_x = dpdx(uv_x);
+    let dy_x = dpdy(uv_x);
+    let s_x = texels_per_pixel / max(max(length(dx_x), length(dy_x)) * 1024.0, 0.001);
+
+    let dx_y = dpdx(uv_y);
+    let dy_y = dpdy(uv_y);
+    let s_y = texels_per_pixel / max(max(length(dx_y), length(dy_y)) * 1024.0, 0.001);
+
+    let dx_z = dpdx(uv_z);
+    let dy_z = dpdy(uv_z);
+    let s_z = texels_per_pixel / max(max(length(dx_z), length(dy_z)) * 1024.0, 0.001);
+
+    let xaxis = textureSampleGrad(material_textures, material_sampler, uv_x, i32(mat_id), dx_x * s_x, dy_x * s_x).rgb;
+    let yaxis = textureSampleGrad(material_textures, material_sampler, uv_y, i32(mat_id), dx_y * s_y, dy_y * s_y).rgb;
+    let zaxis = textureSampleGrad(material_textures, material_sampler, uv_z, i32(mat_id), dx_z * s_z, dy_z * s_z).rgb;
 
     return xaxis * b.x + yaxis * b.y + zaxis * b.z;
 }
@@ -379,7 +393,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let t = res.t;
     let p = ro + rd * t;
     let n = get_normal(p, res.cell_idx);
-    let albedo = triplanar_sample(p, n, res.mat_id);
+    let albedo = triplanar_sample(p, n, res.mat_id, t);
     let spec_factor = specular_factors[res.mat_id];
 
     let light_dir = normalize(vec3<f32>(0.85, 1.0, -0.7));
