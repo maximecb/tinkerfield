@@ -197,25 +197,26 @@ fn get_normal(p: vec3<f32>, cell_idx: u32) -> vec3<f32> {
     );
 }
 
-fn triplanar_sample(p: vec3<f32>, n: vec3<f32>, mat_id: u32, t: f32) -> vec3<f32> {
+fn triplanar_sample(p: vec3<f32>, n: vec3<f32>, mat_id: u32) -> vec3<f32> {
     let blending = abs(n);
     let b = blending / (blending.x + blending.y + blending.z);
 
     // Scale world-space coordinates to UV space:
     // 1024 texels per texture / 512 texels per meter = 2 meters per texture repeat.
     let uv_p = p * 0.5;
+    let uv_x = uv_p.zy;
+    let uv_y = uv_p.xz;
+    let uv_z = uv_p.xy;
 
-    // Calculate LOD based on distance t.
-    // At distance t, one screen pixel covers ~ (t * uniforms.pixel_size_at_1m) world units.
-    // Our texture is 1024 texels for 2 meters (512 texels/m).
-    // Texels covered per pixel = (t * uniforms.pixel_size_at_1m) * 512.0
-    // LOD = log2(texels per pixel)
-    let texels_per_pixel = t * uniforms.pixel_size_at_1m * 512.0;
-    let lod = max(0.0, log2(texels_per_pixel));
-
-    let xaxis = textureSampleLevel(material_textures, material_sampler, uv_p.zy, i32(mat_id), lod).rgb;
-    let yaxis = textureSampleLevel(material_textures, material_sampler, uv_p.xz, i32(mat_id), lod).rgb;
-    let zaxis = textureSampleLevel(material_textures, material_sampler, uv_p.xy, i32(mat_id), lod).rgb;
+    // Negative LOD bias: scale gradients down to get sharper textures.
+    // textureSampleGrad uses actual screen-space derivatives, which are larger
+    // than the simple t*pixel_size_at_1m estimate for oblique viewing angles
+    // (e.g. a shallow look at the ground sweeps a large depth range per pixel,
+    // inflating dpdy and thus the mip level). 0.5 = one mip level sharper.
+    let lod_bias = 0.5;
+    let xaxis = textureSampleGrad(material_textures, material_sampler, uv_x, i32(mat_id), dpdx(uv_x) * lod_bias, dpdy(uv_x) * lod_bias).rgb;
+    let yaxis = textureSampleGrad(material_textures, material_sampler, uv_y, i32(mat_id), dpdx(uv_y) * lod_bias, dpdy(uv_y) * lod_bias).rgb;
+    let zaxis = textureSampleGrad(material_textures, material_sampler, uv_z, i32(mat_id), dpdx(uv_z) * lod_bias, dpdy(uv_z) * lod_bias).rgb;
 
     return xaxis * b.x + yaxis * b.y + zaxis * b.z;
 }
@@ -271,8 +272,8 @@ fn ray_march(ro: vec3<f32>, rd: vec3<f32>, max_t: f32) -> RayResult {
 
         // Check if cell is potentially non-empty
         if ((grid[cell_idx] & 0xFFu) > 0u) {
-            // Sphere trace within this cell
-            while (t < t_boundary - 0.001) {
+            // Sphere trace within this cell.
+            while (t < t_boundary) {
                 let p = ro + rd * t;
                 let hit = sdf_at_cell(p, cell_idx);
                 let d = hit.d;
@@ -290,7 +291,13 @@ fn ray_march(ro: vec3<f32>, rd: vec3<f32>, max_t: f32) -> RayResult {
                     res.hit = true;
                     return res;
                 }
-                t += max(d, epsilon);
+
+                // Clamp each step to t_boundary so the tracer always evaluates the SDF
+                // at the cell boundary before moving on. Without this, a step whose size
+                // equals the remaining distance to the boundary overshoots the loop guard
+                // and exits without checking — a surface exactly on an integer cell edge
+                // is silently skipped.
+                t = min(t + max(d, epsilon), t_boundary);
             }
         }
 
@@ -372,7 +379,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let t = res.t;
     let p = ro + rd * t;
     let n = get_normal(p, res.cell_idx);
-    let albedo = triplanar_sample(p, n, res.mat_id, t);
+    let albedo = triplanar_sample(p, n, res.mat_id);
     let spec_factor = specular_factors[res.mat_id];
 
     let light_dir = normalize(vec3<f32>(0.85, 1.0, -0.7));
