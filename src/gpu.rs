@@ -400,12 +400,12 @@ impl GPUState
                 eprintln!("Surface timeout");
                 return;
             }
-            wgpu::CurrentSurfaceTexture::Occluded => {
-                eprintln!("Surface occluded");
-                return;
-            }
             wgpu::CurrentSurfaceTexture::Validation => {
                 eprintln!("Surface validation error — GPU likely rejected the previous frame");
+                return;
+            }
+            wgpu::CurrentSurfaceTexture::Occluded => {
+                // This is normal, it happens when the app is not in focus
                 return;
             }
         };
