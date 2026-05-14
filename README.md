@@ -1,7 +1,13 @@
 # TinkerField
 
-This is a simple game engine / construction game based on signed
-distance fields.
+Tinkerfield is a toy 3D game engine / construction game based on Signed
+Distance Fields (SDFs), where you can edit the world in real time. It uses
+SDFs for all 3D graphics (no polygons).
+
+One of my main goals with this project just to show people we're already at
+the point where it's possible to build some kind of game engine with SDFs.
+It doesn't have to be complicated, and you don't need some killer GPU to
+make it work either.
 
 Dependencies:
 - The [Rust toolchain](https://www.rust-lang.org/tools/install)
