@@ -282,12 +282,15 @@ impl World
         let diff = grid_max - self.grid_min;
         self.grid_size = [diff.x as u32, diff.y as u32, diff.z as u32];
 
-        // Sanity check for grid size
-        if self.grid_size[0] > 512 || self.grid_size[1] > 512 || self.grid_size[2] > 512 {
-             println!("Warning: grid size too large: {:?}", self.grid_size);
+        // Total number of grid cells
+        let count = (self.grid_size[0] * self.grid_size[1] * self.grid_size[2]) as usize;
+
+        // Sanity check: grid must fit within the GPU grid buffer (256MB / 4 bytes per cell)
+        let max_cells = (256 * 1024 * 1024) / 4;
+        if count > max_cells {
+            println!("Warning: grid size {:?} ({} cells) exceeds GPU buffer capacity", self.grid_size, count);
         }
 
-        let count = (self.grid_size[0] * self.grid_size[1] * self.grid_size[2]) as usize;
         self.grid.clear();
         self.grid.resize(count, 0);
 
