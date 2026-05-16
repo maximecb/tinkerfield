@@ -1,6 +1,8 @@
 # Simple city scene
-# Player spawns at (0, 1.8, 0) facing +Z
 # Streets run along the X and Z axes, buildings in the four corner blocks
+
+# Spawn at the south end of the main street, facing north into the city
+(player x=0 y=1.8 z=-25 ra=0)
 
 # === Ground ===
 (box x=0 y=-0.05 z=0 sx=80 sy=0.1 sz=80 mat='asphalt_01')

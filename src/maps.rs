@@ -17,29 +17,69 @@ pub fn parse_map(path: &Path, materials: &MaterialRegistry) -> Result<World, Par
             break;
         }
 
-        let brush = parse_entry(&mut lexer, materials)?;
-        world.add_brush(brush);
+        lexer.expect_token("(")?;
+
+        if lexer.match_keyword("player")? {
+            parse_player(&mut lexer, &mut world)?;
+        } else {
+            let brush = parse_entry(&mut lexer, materials)?;
+            world.add_brush(brush);
+        }
     }
 
     Ok(world)
 }
 
+fn parse_player(lexer: &mut Lexer, world: &mut World) -> Result<(), ParseError>
+{
+    let mut x = world.player.position.x;
+    let mut y = world.player.position.y;
+    let mut z = world.player.position.z;
+    let mut ra = world.player.yaw;
+
+    loop {
+        lexer.eat_ws()?;
+
+        if lexer.match_char(')') {
+            break;
+        }
+
+        let key = lexer.parse_ident()?;
+        lexer.expect_token("=")?;
+
+        match key.as_str() {
+            "x"  => x  = parse_f32(lexer)?,
+            "y"  => y  = parse_f32(lexer)?,
+            "z"  => z  = parse_f32(lexer)?,
+            "ra" => ra = parse_f32(lexer)?,
+            _ => return lexer.parse_error(&format!("unknown player attribute \"{}\"", key)),
+        }
+    }
+
+    world.player.position = Vec3::new(x, y, z);
+    world.player.yaw = ra;
+    world.player.update_basis();
+
+    Ok(())
+}
+
+/// Parse a brush entry. '(' must already be consumed by the caller.
 fn parse_entry(lexer: &mut Lexer, materials: &MaterialRegistry) -> Result<Brush, ParseError>
 {
-    lexer.expect_token("(")?;
     lexer.eat_ws()?;
     let keyword = lexer.parse_ident()?;
 
     match keyword.as_str() {
         "sub" => {
+            lexer.expect_token("(")?;
             let mut brush = parse_entry(lexer, materials)?;
             brush.op = OP_SUB;
             lexer.expect_token(")")?;
             Ok(brush)
         }
-        "box" => parse_brush(lexer, materials, KIND_BOX),
+        "box"      => parse_brush(lexer, materials, KIND_BOX),
         "cylinder" => parse_brush(lexer, materials, KIND_CYLINDER),
-        "sphere" => parse_brush(lexer, materials, KIND_SPHERE),
+        "sphere"   => parse_brush(lexer, materials, KIND_SPHERE),
         _ => lexer.parse_error(&format!("unknown shape \"{}\"", keyword)),
     }
 }
