@@ -507,6 +507,33 @@ impl App
             }
         }
 
+        if (shift_held || alt_held) && self.edit_mode == EditMode::Scale {
+            if let (Some(brush_id), Some((axis0, axis1))) = (self.selected, self.edit_axes) {
+                // Accumulate raw mouse delta along the two edit axes
+                let sensitivity = 0.01;
+                self.drag_remainder += axis0 * (dx as f32 * sensitivity);
+                self.drag_remainder += axis1 * (-dy as f32 * sensitivity);
+
+                // Extract the grid-aligned portion; carry the sub-grid remainder forward
+                let snapped = self.drag_remainder.snap(0.1);
+                self.drag_remainder -= snapped;
+
+                // Only rebuild the world if the scale actually changed
+                if snapped.length_sq() > 0.0 {
+                    let mut brush = self.world.remove_brush(brush_id);
+                    // axis0/axis1 are world-axis-aligned, so snapped components
+                    // map directly onto the corresponding scale axes
+                    brush.scale += snapped;
+                    brush.scale.x = brush.scale.x.max(0.1);
+                    brush.scale.y = brush.scale.y.max(0.1);
+                    brush.scale.z = brush.scale.z.max(0.1);
+                    self.selected = Some(self.world.add_brush(brush));
+                    self.upload_world();
+                }
+                return;
+            }
+        }
+
         let sensitivity = 0.1;
         self.world.rotate_player(
             dx as f32 * sensitivity,
