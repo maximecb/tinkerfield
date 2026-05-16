@@ -55,6 +55,9 @@ struct App
     /// World axes captured when Shift/Alt is pressed, used for mouse-driven editing.
     /// axis0 is driven by mouse X, axis1 by mouse Y (inverted).
     edit_axes: Option<(Vec3, Vec3)>,
+
+    /// Accumulated sub-grid mouse movement, carried forward until it crosses a grid boundary.
+    drag_remainder: Vec3,
 }
 
 impl App
@@ -101,6 +104,7 @@ impl App
             copied: None,
             edit_mode: EditMode::Position,
             edit_axes: None,
+            drag_remainder: Vec3::new(0.0, 0.0, 0.0),
         }
     }
 
@@ -181,6 +185,7 @@ impl App
                     Vec3::new(0.0, 0.0, player.right.z.signum())
                 };
                 self.edit_axes = Some((axis0, Vec3::new(0.0, 1.0, 0.0)));
+                self.drag_remainder = Vec3::new(0.0, 0.0, 0.0);
             }
 
             // Capture edit axes when Alt is pressed: right-aligned horizontal + forward-aligned horizontal
@@ -197,6 +202,7 @@ impl App
                     Vec3::new(0.0, 0.0, player.forward.z.signum())
                 };
                 self.edit_axes = Some((axis0, axis1));
+                self.drag_remainder = Vec3::new(0.0, 0.0, 0.0);
             }
 
             // Create a new object
@@ -463,7 +469,7 @@ impl App
                 };
 
                 // Apply the axis-aligned movement
-                brush.pos += move_vec * 0.1;
+                brush.pos = (brush.pos + move_vec * 0.1).snap(0.1);
                 self.selected = Some(self.world.add_brush(brush));
                 self.upload_world();
             }
@@ -481,12 +487,22 @@ impl App
 
         if (shift_held || alt_held) && self.edit_mode == EditMode::Position {
             if let (Some(brush_id), Some((axis0, axis1))) = (self.selected, self.edit_axes) {
+                // Accumulate raw mouse delta along the two edit axes
                 let sensitivity = 0.01;
-                let mut brush = self.world.remove_brush(brush_id);
-                brush.pos += axis0 * (dx as f32 * sensitivity);
-                brush.pos += axis1 * (-dy as f32 * sensitivity);
-                self.selected = Some(self.world.add_brush(brush));
-                self.upload_world();
+                self.drag_remainder += axis0 * (dx as f32 * sensitivity);
+                self.drag_remainder += axis1 * (-dy as f32 * sensitivity);
+
+                // Extract the grid-aligned portion; carry the sub-grid remainder forward
+                let snapped = self.drag_remainder.snap(0.1);
+                self.drag_remainder -= snapped;
+
+                // Only rebuild the world if the position actually changed
+                if snapped.length_sq() > 0.0 {
+                    let mut brush = self.world.remove_brush(brush_id);
+                    brush.pos = (brush.pos + snapped).snap(0.1);
+                    self.selected = Some(self.world.add_brush(brush));
+                    self.upload_world();
+                }
                 return;
             }
         }

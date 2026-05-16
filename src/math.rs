@@ -53,6 +53,14 @@ impl Vec3
     pub fn max(self, other: Self) -> Self {
         Self::new(self.x.max(other.x), self.y.max(other.y), self.z.max(other.z))
     }
+
+    pub fn snap(self, grid: f32) -> Self {
+        Self::new(
+            (self.x / grid).round() * grid,
+            (self.y / grid).round() * grid,
+            (self.z / grid).round() * grid,
+        )
+    }
 }
 
 impl Add for Vec3 {
