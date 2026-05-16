@@ -1,0 +1,154 @@
+# House map — brick exterior, detailed interior
+# House footprint: x -5 to 5, z 0 to 10. Player spawns outside facing north.
+
+(player x=0 y=1.8 z=-5 ra=0)
+
+# === Outdoor ground ===
+(box x=0 y=-0.05 z=0 sx=60 sy=0.1 sz=60 mat='grass_01')
+# Concrete path leading to the door
+(box x=0 y=0.01 z=-3 sx=2.0 sy=0.02 sz=6 mat='concrete_01')
+# Doorstep
+(box x=0 y=0.1 z=-0.4 sx=2.0 sy=0.2 sz=0.8 mat='concrete_02')
+
+# Small bushes flanking the entrance
+(sphere x=-1.8 y=0.5 z=0.4 s=1.0 mat='grass_01')
+(sphere x=1.8 y=0.5 z=0.4 s=1.0 mat='grass_01')
+# Flower bed along front wall
+(box x=0 y=0.05 z=0.7 sx=8 sy=0.1 sz=0.5 mat='dirt_01')
+
+# === Walls — brick, 0.4m thick, 3m tall ===
+# Front wall (south face at z=0, center z=0.2)
+(box x=0 y=1.5 z=0.2 sx=10 sy=3 sz=0.4 mat='brick_02')
+# Back wall (north face at z=10, center z=9.8)
+(box x=0 y=1.5 z=9.8 sx=10 sy=3 sz=0.4 mat='brick_02')
+# Left wall (west face at x=-5, runs between inner faces, center x=-4.8)
+(box x=-4.8 y=1.5 z=5 sx=0.4 sy=3 sz=9.2 mat='brick_02')
+# Right wall (east face at x=5, center x=4.8)
+(box x=4.8 y=1.5 z=5 sx=0.4 sy=3 sz=9.2 mat='brick_02')
+
+# === Openings ===
+# Door (front wall, centered, 1.2m wide x 2.2m tall)
+(sub (box x=0 y=1.1 z=0.2 sx=1.2 sy=2.2 sz=0.6 mat='brick_02'))
+# Front windows (flanking the door)
+(sub (box x=-2.8 y=1.8 z=0.2 sx=1.4 sy=1.0 sz=0.6 mat='brick_02'))
+(sub (box x=2.8 y=1.8 z=0.2 sx=1.4 sy=1.0 sz=0.6 mat='brick_02'))
+# Back window (centered, above fireplace area)
+(sub (box x=0 y=1.8 z=9.8 sx=1.6 sy=1.0 sz=0.6 mat='brick_02'))
+# Side windows
+(sub (box x=-4.8 y=1.8 z=3.5 sx=0.6 sy=1.0 sz=1.4 mat='brick_02'))
+(sub (box x=4.8 y=1.8 z=7.0 sx=0.6 sy=1.0 sz=1.4 mat='brick_02'))
+
+# Window sills (exterior ledges)
+(box x=-2.8 y=1.22 z=-0.05 sx=1.6 sy=0.08 sz=0.3 mat='concrete_02')
+(box x=2.8 y=1.22 z=-0.05 sx=1.6 sy=0.08 sz=0.3 mat='concrete_02')
+
+# === Floor, ceiling and roof ===
+# Wood floor (inside walls)
+(box x=0 y=0.05 z=5 sx=9.2 sy=0.1 sz=9.2 mat='floor_01')
+# Concrete ceiling
+(box x=0 y=3.08 z=5 sx=10 sy=0.15 sz=10 mat='concrete_01')
+# Flat roof slab (0.5m overhang on all sides)
+(box x=0 y=3.45 z=5 sx=11 sy=0.7 sz=11 mat='concrete_03')
+
+# === Interior — Entrance ===
+# Small doormat
+(box x=0 y=0.12 z=0.8 sx=1.0 sy=0.02 sz=0.6 mat='floor_02')
+
+# === Interior — Kitchen (right wall, front half) ===
+# Lower cabinets
+(box x=4.1 y=0.5 z=2.2 sx=0.5 sy=1.0 sz=3.0 mat='wood_04')
+# Countertop (overhangs cabinets slightly)
+(box x=4.05 y=1.08 z=2.2 sx=0.6 sy=0.08 sz=3.1 mat='concrete_02')
+# Upper cabinets on wall
+(box x=4.35 y=2.1 z=2.2 sx=0.25 sy=0.9 sz=2.5 mat='wood_04')
+# Sink cutout in countertop
+(sub (box x=4.1 y=1.08 z=1.2 sx=0.5 sy=0.1 sz=0.7 mat='concrete_02'))
+
+# === Interior — Dining table (right side, front area) ===
+# Table top
+(box x=2.8 y=0.87 z=3.8 sx=1.8 sy=0.08 sz=1.0 mat='wood_01')
+# Legs
+(cylinder x=2.0 y=0.43 z=3.38 sx=0.08 sy=0.86 sz=0.08 mat='wood_02')
+(cylinder x=3.6 y=0.43 z=3.38 sx=0.08 sy=0.86 sz=0.08 mat='wood_02')
+(cylinder x=2.0 y=0.43 z=4.22 sx=0.08 sy=0.86 sz=0.08 mat='wood_02')
+(cylinder x=3.6 y=0.43 z=4.22 sx=0.08 sy=0.86 sz=0.08 mat='wood_02')
+# Chair south (seat + backrest)
+(box x=2.8 y=0.48 z=2.9 sx=0.55 sy=0.07 sz=0.5 mat='wood_03')
+(box x=2.8 y=0.83 z=2.67 sx=0.55 sy=0.6 sz=0.07 mat='wood_03')
+# Chair north
+(box x=2.8 y=0.48 z=4.7 sx=0.55 sy=0.07 sz=0.5 mat='wood_03')
+(box x=2.8 y=0.83 z=4.93 sx=0.55 sy=0.6 sz=0.07 mat='wood_03')
+# Chair west (beside table)
+(box x=1.6 y=0.48 z=3.8 sx=0.5 sy=0.07 sz=0.55 mat='wood_03')
+(box x=1.37 y=0.83 z=3.8 sx=0.07 sy=0.6 sz=0.55 mat='wood_03')
+
+# === Interior — Sofa area (left side, middle) ===
+# Rug
+(box x=-2.5 y=0.12 z=4.8 sx=4.5 sy=0.02 sz=3.5 mat='floor_02')
+# Sofa seat
+(box x=-3.0 y=0.45 z=4.8 sx=2.4 sy=0.4 sz=0.9 mat='wood_04')
+# Sofa back
+(box x=-3.0 y=0.87 z=5.24 sx=2.4 sy=0.5 sz=0.12 mat='wood_04')
+# Sofa arms
+(box x=-4.1 y=0.68 z=4.8 sx=0.1 sy=0.15 sz=0.9 mat='wood_04')
+(box x=-1.9 y=0.68 z=4.8 sx=0.1 sy=0.15 sz=0.9 mat='wood_04')
+# Coffee table
+(box x=-3.0 y=0.4 z=3.8 sx=1.4 sy=0.07 sz=0.65 mat='wood_02')
+(cylinder x=-3.55 y=0.2 z=3.58 sx=0.07 sy=0.4 sz=0.07 mat='wood_02')
+(cylinder x=-2.45 y=0.2 z=3.58 sx=0.07 sy=0.4 sz=0.07 mat='wood_02')
+(cylinder x=-3.55 y=0.2 z=4.02 sx=0.07 sy=0.4 sz=0.07 mat='wood_02')
+(cylinder x=-2.45 y=0.2 z=4.02 sx=0.07 sy=0.4 sz=0.07 mat='wood_02')
+# Side lamp (beside sofa)
+(cylinder x=-1.55 y=0.6 z=4.0 sx=0.07 sy=1.2 sz=0.07 mat='metal_01')
+(sphere x=-1.55 y=1.25 z=4.0 s=0.32 mat='concrete_01')
+
+# === Interior — Fireplace (back wall, center) ===
+# Brick surround
+(box x=0 y=1.3 z=9.52 sx=2.8 sy=2.6 sz=0.3 mat='brick_04')
+# Firebox cutout
+(sub (box x=0 y=0.8 z=9.52 sx=1.6 sy=1.4 sz=0.45 mat='brick_04'))
+# Hearth (raised stone floor in front)
+(box x=0 y=0.1 z=9.1 sx=2.4 sy=0.15 sz=0.7 mat='concrete_03')
+# Mantelpiece
+(box x=0 y=2.68 z=9.43 sx=3.0 sy=0.12 sz=0.45 mat='wood_01')
+# Decorations on mantel: two candles
+(cylinder x=-0.7 y=2.82 z=9.28 sx=0.07 sy=0.3 sz=0.07 mat='concrete_01')
+(sphere x=-0.7 y=2.99 z=9.28 s=0.1 mat='concrete_01')
+(cylinder x=0.7 y=2.82 z=9.28 sx=0.07 sy=0.3 sz=0.07 mat='concrete_01')
+(sphere x=0.7 y=2.99 z=9.28 s=0.1 mat='concrete_01')
+# Small sphere vase on mantel
+(sphere x=0 y=2.88 z=9.28 s=0.22 mat='brick_01')
+
+# === Interior — Bedroom area (back left) ===
+# Bed frame
+(box x=-3.2 y=0.3 z=7.8 sx=1.6 sy=0.6 sz=2.4 mat='wood_01')
+# Mattress
+(box x=-3.2 y=0.68 z=7.8 sx=1.4 sy=0.25 sz=2.2 mat='floor_01')
+# Blanket (slightly shorter, on top of mattress)
+(box x=-3.2 y=0.84 z=8.0 sx=1.35 sy=0.1 sz=1.8 mat='floor_02')
+# Pillow
+(sphere x=-3.2 y=0.88 z=6.85 sx=0.75 sy=0.22 sz=0.5 mat='floor_01')
+# Headboard
+(box x=-3.2 y=1.15 z=6.72 sx=1.6 sy=1.0 sz=0.1 mat='wood_01')
+# Bedside table
+(box x=-1.8 y=0.4 z=7.0 sx=0.55 sy=0.8 sz=0.55 mat='wood_03')
+# Bedside lamp
+(cylinder x=-1.8 y=0.87 z=7.0 sx=0.06 sy=0.57 sz=0.06 mat='metal_01')
+(sphere x=-1.8 y=1.22 z=7.0 s=0.28 mat='concrete_01')
+
+# === Interior — Bookshelf (right wall, back area) ===
+# Back panel against wall
+(box x=4.45 y=1.4 z=7.8 sx=0.3 sy=2.8 sz=2.2 mat='wood_02')
+# Shelves
+(box x=4.45 y=0.6 z=7.8 sx=0.32 sy=0.06 sz=2.2 mat='wood_02')
+(box x=4.45 y=1.2 z=7.8 sx=0.32 sy=0.06 sz=2.2 mat='wood_02')
+(box x=4.45 y=1.8 z=7.8 sx=0.32 sy=0.06 sz=2.2 mat='wood_02')
+(box x=4.45 y=2.4 z=7.8 sx=0.32 sy=0.06 sz=2.2 mat='wood_02')
+# Books (boxes on shelves — different wood tones suggest book spines)
+(box x=4.42 y=0.95 z=7.2 sx=0.2 sy=0.6 sz=0.18 mat='brick_01')
+(box x=4.42 y=0.95 z=7.45 sx=0.2 sy=0.6 sz=0.22 mat='wood_03')
+(box x=4.42 y=0.95 z=7.72 sx=0.2 sy=0.6 sz=0.16 mat='brick_02')
+(box x=4.42 y=0.95 z=7.92 sx=0.2 sy=0.6 sz=0.2 mat='wood_04')
+(box x=4.42 y=1.55 z=7.3 sx=0.2 sy=0.6 sz=0.25 mat='brick_03')
+(box x=4.42 y=1.55 z=7.6 sx=0.2 sy=0.6 sz=0.2 mat='wood_01')
+(box x=4.42 y=1.55 z=7.85 sx=0.2 sy=0.6 sz=0.22 mat='concrete_04')
