@@ -51,6 +51,10 @@ struct App
 
     /// Current brush edit mode
     edit_mode: EditMode,
+
+    /// World axes captured when Shift/Alt is pressed, used for mouse-driven editing.
+    /// axis0 is driven by mouse X, axis1 by mouse Y (inverted).
+    edit_axes: Option<(Vec3, Vec3)>,
 }
 
 impl App
@@ -96,6 +100,7 @@ impl App
             selected: None,
             copied: None,
             edit_mode: EditMode::Position,
+            edit_axes: None,
         }
     }
 
@@ -167,6 +172,33 @@ impl App
         }
 
         match key {
+            // Capture edit axes when Shift is pressed: right-aligned horizontal + Y
+            ShiftLeft | ShiftRight => {
+                let player = &self.world.player;
+                let axis0 = if player.right.x.abs() > player.right.z.abs() {
+                    Vec3::new(player.right.x.signum(), 0.0, 0.0)
+                } else {
+                    Vec3::new(0.0, 0.0, player.right.z.signum())
+                };
+                self.edit_axes = Some((axis0, Vec3::new(0.0, 1.0, 0.0)));
+            }
+
+            // Capture edit axes when Alt is pressed: right-aligned horizontal + forward-aligned horizontal
+            AltLeft | AltRight => {
+                let player = &self.world.player;
+                let axis0 = if player.right.x.abs() > player.right.z.abs() {
+                    Vec3::new(player.right.x.signum(), 0.0, 0.0)
+                } else {
+                    Vec3::new(0.0, 0.0, player.right.z.signum())
+                };
+                let axis1 = if player.forward.x.abs() > player.forward.z.abs() {
+                    Vec3::new(player.forward.x.signum(), 0.0, 0.0)
+                } else {
+                    Vec3::new(0.0, 0.0, player.forward.z.signum())
+                };
+                self.edit_axes = Some((axis0, axis1));
+            }
+
             // Create a new object
             KeyO => {
                 let mut pos = self.world.player.position + self.world.player.forward * 3.0;
@@ -440,6 +472,32 @@ impl App
         }
     }
 
+    fn mouse_move(&mut self, dx: f64, dy: f64)
+    {
+        let shift_held = self.key_down.contains(&KeyCode::ShiftLeft)
+            || self.key_down.contains(&KeyCode::ShiftRight);
+        let alt_held = self.key_down.contains(&KeyCode::AltLeft)
+            || self.key_down.contains(&KeyCode::AltRight);
+
+        if (shift_held || alt_held) && self.edit_mode == EditMode::Position {
+            if let (Some(brush_id), Some((axis0, axis1))) = (self.selected, self.edit_axes) {
+                let sensitivity = 0.01;
+                let mut brush = self.world.remove_brush(brush_id);
+                brush.pos += axis0 * (dx as f32 * sensitivity);
+                brush.pos += axis1 * (-dy as f32 * sensitivity);
+                self.selected = Some(self.world.add_brush(brush));
+                self.upload_world();
+                return;
+            }
+        }
+
+        let sensitivity = 0.1;
+        self.world.rotate_player(
+            dx as f32 * sensitivity,
+            -dy as f32 * sensitivity,
+        );
+    }
+
     fn upload_world(&self)
     {
         if let Some(gpu_state) = &self.gpu_state {
@@ -556,11 +614,7 @@ impl ApplicationHandler for App
     fn device_event(&mut self, _event_loop: &ActiveEventLoop, _device_id: DeviceId, event: DeviceEvent)
     {
         if let DeviceEvent::MouseMotion { delta } = event {
-            let sensitivity = 0.1;
-            self.world.rotate_player(
-                delta.0 as f32 * sensitivity,
-                -delta.1 as f32 * sensitivity,
-            );
+            self.mouse_move(delta.0, delta.1);
         }
     }
 }
