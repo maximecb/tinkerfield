@@ -36,7 +36,7 @@ cargo run --release
 - **C**: Subtract a cylinder aligned to the camera direction (quick tunnel tool)
 - **Enter**: Deselect the current brush
 - **Delete / Backspace**: Remove the selected brush
-- **M / N**: Cycle to the next / previous material
+- **N / M**: Cycle to the previous / next material
 - **Ctrl+C / Ctrl+V**: Copy / paste the selected brush
 
 ### Edit Modes
