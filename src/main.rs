@@ -5,6 +5,7 @@ mod materials;
 mod lexer;
 
 use std::collections::HashSet;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 use winit::{
@@ -59,40 +60,21 @@ struct App
 
     /// Accumulated sub-grid mouse movement, carried forward until it crosses a grid boundary.
     drag_remainder: Vec3,
+
+    /// Map file to load, also used for Ctrl+R hot-reload.
+    map_file: Option<PathBuf>,
 }
 
 impl App
 {
-    fn new() -> Self
+    fn new(map_file: Option<PathBuf>) -> Self
     {
         let now = Instant::now();
 
-        let mut world = world::World::new();
+        let world = world::World::new();
         let materials = MaterialRegistry::load();
 
-        // Grass surface
-        world.add_brush(Brush {
-            pos: Vec3::new(0.0, -0.05, 0.0),
-            kind: world::KIND_BOX,
-            scale: Vec3::new(60.0, 0.1, 60.0),
-            material: materials.id_from_name("grass_01"),
-            rot: Quat::IDENTITY,
-            op: world::OP_ADD,
-            _pad: [0; 3],
-        });
-
-        // Dirt under the grass
-        world.add_brush(Brush {
-            pos: Vec3::new(0.0, -8.05, 0.0),
-            kind: world::KIND_BOX,
-            scale: Vec3::new(60.0, 16.0, 60.0),
-            material: materials.id_from_name("dirt_01"),
-            rot: Quat::IDENTITY,
-            op: world::OP_ADD,
-            _pad: [0; 3],
-        });
-
-        Self {
+        let mut app = Self {
             gpu_state: None,
             world,
             materials,
@@ -106,7 +88,49 @@ impl App
             edit_mode: EditMode::Position,
             edit_axes: None,
             drag_remainder: Vec3::new(0.0, 0.0, 0.0),
+            map_file,
+        };
+
+        if app.map_file.is_some() {
+            app.load_map();
+            return app;
         }
+
+        // Grass surface
+        app.world.add_brush(Brush {
+            pos: Vec3::new(0.0, -0.05, 0.0),
+            kind: world::KIND_BOX,
+            scale: Vec3::new(60.0, 0.1, 60.0),
+            material: app.materials.id_from_name("grass_01"),
+            rot: Quat::IDENTITY,
+            op: world::OP_ADD,
+            _pad: [0; 3],
+        });
+
+        // Dirt under the grass
+        app.world.add_brush(Brush {
+            pos: Vec3::new(0.0, -8.05, 0.0),
+            kind: world::KIND_BOX,
+            scale: Vec3::new(60.0, 16.0, 60.0),
+            material: app.materials.id_from_name("dirt_01"),
+            rot: Quat::IDENTITY,
+            op: world::OP_ADD,
+            _pad: [0; 3],
+        });
+
+        app
+    }
+
+    /// Load or reload the map
+    fn load_map(&mut self)
+    {
+        let Some(path) = &self.map_file else {
+            eprintln!("No map file specified");
+            return;
+        };
+
+        println!("Loading map: {}", path.display());
+        // TODO: parse and load map file
     }
 
     fn update(&mut self)
@@ -168,6 +192,11 @@ impl App
                         self.edit_mode = EditMode::Position;
                         self.upload_world();
                     }
+                }
+
+                // Hot reload the map from file
+                KeyR => {
+                    self.load_map();
                 }
 
                 _ => {}
@@ -530,7 +559,9 @@ impl ApplicationHandler for App
 
 fn main()
 {
+    let map_file = std::env::args().nth(1).map(PathBuf::from);
+
     let event_loop = EventLoop::new().unwrap();
-    let mut app = App::new();
+    let mut app = App::new(map_file);
     event_loop.run_app(&mut app).unwrap();
 }
