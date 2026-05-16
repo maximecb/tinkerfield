@@ -2,6 +2,7 @@ mod world;
 mod math;
 mod gpu;
 mod materials;
+mod lexer;
 
 use std::collections::HashSet;
 use std::sync::Arc;
