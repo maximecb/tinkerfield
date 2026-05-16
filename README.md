@@ -22,37 +22,43 @@ cargo run --release
 ## Controls
 
 ### Player Movement
-- **W / S** (or Arrows): Move Forward / Backward
-- **A / D** (or Arrows): Strafe Left / Right
+
+- **W / S** (or Arrow keys): Move forward / backward
+- **A / D** (or Arrow keys): Strafe left / right
 - **Mouse**: Look around
 - **Escape**: Exit
 
 ### Brush Management
-- **O**: Add a new Box brush in front of the player.
-  - If a brush is already selected, pressing **O** will cycle its type (Box, Cylinder, Sphere, Cone).
-- **Enter**: "Stamp" the current brush (duplicate it and keep the new one selected).
-- **Delete / Backspace**: Remove the selected brush.
-- **M**: Flip to the next material.
-- **N**: Flip to the previous material.
 
-### Position Edit Mode ('P' key)
-When a brush is selected and you are in Position mode:
-- **I / K**: Move forward / backward relative to your view (aligned to the nearest world X or Z axis).
-- **J / L**: Move left / right relative to your view (aligned to the nearest world X or Z axis).
-- **U / H**: Move vertically Up / Down (World Y axis).
-
-### Scale Edit Mode ('X' key)
-When a brush is selected and you are in Scale mode:
-- **I / K**: Scale along the world horizontal axis (X or Z) most aligned with your forward view.
-- **J / L**: Scale along the world horizontal axis (X or Z) most aligned with your right view.
-- **U / H**: Scale vertically along the World Y axis.
-- **Note**: For Box brushes, scaling expands from the minimum corner (the min corner stays fixed).
+- **O**: Create a new Box brush in front of the player
+- **T**: Cycle the selected brush's type (Box → Cylinder → Sphere → Cone)
+- **Q**: Toggle the selected brush between Add and Subtract mode
+- **C**: Subtract a cylinder aligned to the camera direction (quick tunnel tool)
+- **Enter**: Deselect the current brush
+- **Delete / Backspace**: Remove the selected brush
+- **M / N**: Cycle to the next / previous material
+- **Ctrl+C / Ctrl+V**: Copy / paste the selected brush
 
 ### Edit Modes
-These keys switch the editing mode for the currently selected brush:
-- **P**: Switch to Position mode (default).
-- **X**: Switch to Scale/size mode.
-- **R**: Switch to Rotation mode (currently implemented in code but pending key bindings).
+
+Switch modes with these keys when a brush is selected:
+- **P**: Position mode (default)
+- **X**: Scale/size mode
+- **R**: Rotation mode (work in progress)
+
+### Position and Scale Editing
+
+In Position and Scale modes, holding a modifier key lets you move or resize
+the selected brush with the mouse. The edit axes are snapped to world axes
+based on your facing direction at the moment you press the modifier key.
+
+- **Shift + Mouse**: left/right controls the horizontal axis most aligned with
+  your view, up/down controls the vertical (Y) axis.
+- **Alt + Mouse**: left/right controls the horizontal axis most aligned with
+  your view, up/down controls the horizontal axis most aligned with your
+  forward direction — keeping movement on the ground plane.
+
+Positions and scales snap to a 0.1-unit grid.
 
 ## Contributing
 
