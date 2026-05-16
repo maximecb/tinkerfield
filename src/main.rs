@@ -415,10 +415,14 @@ impl App
 
         if (shift_held || alt_held) && self.edit_mode == EditMode::Scale {
             if let (Some(brush_id), Some((axis0, axis1))) = (self.selected, self.edit_axes) {
-                // Accumulate raw mouse delta along the two edit axes
+                // Accumulate along absolute-value axes so mouse-right always grows
+                // the player's right face regardless of which world direction axis0
+                // points in. The signed axes are still used below to pin the correct face.
                 let sensitivity = 0.01;
-                self.drag_remainder += axis0 * (dx as f32 * sensitivity);
-                self.drag_remainder += axis1 * (-dy as f32 * sensitivity);
+                let abs0 = Vec3::new(axis0.x.abs(), axis0.y.abs(), axis0.z.abs());
+                let abs1 = Vec3::new(axis1.x.abs(), axis1.y.abs(), axis1.z.abs());
+                self.drag_remainder += abs0 * (dx as f32 * sensitivity);
+                self.drag_remainder += abs1 * (-dy as f32 * sensitivity);
 
                 // Extract the grid-aligned portion; carry the sub-grid remainder forward
                 let snapped = self.drag_remainder.snap(0.1);
@@ -427,12 +431,28 @@ impl App
                 // Only rebuild the world if the scale actually changed
                 if snapped.length_sq() > 0.0 {
                     let mut brush = self.world.remove_brush(brush_id);
-                    // axis0/axis1 are world-axis-aligned, so snapped components
-                    // map directly onto the corresponding scale axes
+                    let old_scale = brush.scale;
+
                     brush.scale += snapped;
                     brush.scale.x = brush.scale.x.max(0.1);
                     brush.scale.y = brush.scale.y.max(0.1);
                     brush.scale.z = brush.scale.z.max(0.1);
+
+                    let actual_delta = brush.scale - old_scale;
+
+                    if brush.kind == world::KIND_BOX {
+                        // Pin the face opposite to each drag axis: if the axis points in +Z,
+                        // scale grows toward +Z so the -Z face (z_min) stays fixed, and vice versa.
+                        let s_x = (axis0.x + axis1.x).signum();
+                        let s_z = (axis0.z + axis1.z).signum();
+                        brush.pos.x += actual_delta.x * 0.5 * s_x;
+                        brush.pos.z += actual_delta.z * 0.5 * s_z;
+                        brush.pos.y += actual_delta.y * 0.5;
+                    } else if brush.kind == world::KIND_CYLINDER || brush.kind == world::KIND_CONE {
+                        // Cylinders and cones grow upwards from the base
+                        brush.pos.y += actual_delta.y * 0.5;
+                    }
+
                     self.selected = Some(self.world.add_brush(brush));
                     self.upload_world();
                 }

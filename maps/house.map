@@ -11,8 +11,8 @@
 (box x=0 y=0.1 z=-0.4 sx=2.0 sy=0.2 sz=0.8 mat='concrete_02')
 
 # Small bushes flanking the entrance
-(sphere x=-1.8 y=0.5 z=0.4 s=1.0 mat='grass_01')
-(sphere x=1.8 y=0.5 z=0.4 s=1.0 mat='grass_01')
+(sphere x=-1.8 y=0.5 z=-0.6 s=1.0 mat='grass_01')
+(sphere x=1.8 y=0.5 z=-0.6 s=1.0 mat='grass_01')
 # Flower bed along front wall
 (box x=0 y=0.05 z=0.7 sx=8 sy=0.1 sz=0.5 mat='dirt_01')
 
@@ -32,8 +32,6 @@
 # Front windows (flanking the door)
 (sub (box x=-2.8 y=1.8 z=0.2 sx=1.4 sy=1.0 sz=0.6 mat='brick_02'))
 (sub (box x=2.8 y=1.8 z=0.2 sx=1.4 sy=1.0 sz=0.6 mat='brick_02'))
-# Back window (centered, above fireplace area)
-(sub (box x=0 y=1.8 z=9.8 sx=1.6 sy=1.0 sz=0.6 mat='brick_02'))
 # Side windows
 (sub (box x=-4.8 y=1.8 z=3.5 sx=0.6 sy=1.0 sz=1.4 mat='brick_02'))
 (sub (box x=4.8 y=1.8 z=7.0 sx=0.6 sy=1.0 sz=1.4 mat='brick_02'))
