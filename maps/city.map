@@ -16,8 +16,28 @@
 # === Intersection centerpiece ===
 # Low concrete plaza
 (box x=0 y=0.08 z=0 sx=14 sy=0.14 sz=14 mat='concrete_02')
-# Fountain base (sphere)
-(sphere x=0 y=0.5 z=0 s=1.0 mat='concrete_03')
+
+# === Fountain ===
+# Outer step ring (broad surround at plaza level)
+(cylinder x=0 y=0.19 z=0 sx=6.5 sy=0.08 sz=6.5 mat='concrete_02')
+# Lower basin outer rim
+(cylinder x=0 y=0.4 z=0 sx=5.2 sy=0.5 sz=5.2 mat='concrete_03')
+# Lower basin hollowed (leaves ring walls, floor stays at plaza level)
+(sub (cylinder x=0 y=0.41 z=0 sx=4.6 sy=0.52 sz=4.6 mat='concrete_03'))
+# Pedestal base disc
+(cylinder x=0 y=0.75 z=0 sx=1.5 sy=0.2 sz=1.5 mat='concrete_03')
+# Pedestal column
+(cylinder x=0 y=1.25 z=0 sx=0.65 sy=0.8 sz=0.65 mat='concrete_03')
+# Pedestal capital (wider top)
+(cylinder x=0 y=1.725 z=0 sx=1.2 sy=0.15 sz=1.2 mat='concrete_03')
+# Upper basin outer rim
+(cylinder x=0 y=1.95 z=0 sx=2.4 sy=0.3 sz=2.4 mat='concrete_03')
+# Upper basin hollowed
+(sub (cylinder x=0 y=1.96 z=0 sx=1.8 sy=0.32 sz=1.8 mat='concrete_03'))
+# Water spire (thin central jet)
+(cylinder x=0 y=2.4 z=0 sx=0.1 sy=0.6 sz=0.1 mat='concrete_02')
+# Spire cap
+(sphere x=0 y=2.8 z=0 s=0.22 mat='concrete_02')
 
 # === North-West Block ===
 # Main concrete tower
