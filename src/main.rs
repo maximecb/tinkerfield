@@ -3,6 +3,7 @@ mod math;
 mod gpu;
 mod materials;
 mod lexer;
+mod maps;
 
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -124,13 +125,23 @@ impl App
     /// Load or reload the map
     fn load_map(&mut self)
     {
-        let Some(path) = &self.map_file else {
+        let Some(path) = self.map_file.clone() else {
             eprintln!("No map file specified");
             return;
         };
 
         println!("Loading map: {}", path.display());
-        // TODO: parse and load map file
+
+        match maps::parse_map(&path, &self.materials) {
+            Ok(world) => {
+                self.world = world;
+                self.selected = None;
+                self.upload_world();
+            }
+            Err(e) => {
+                eprintln!("Map parse error: {}", e);
+            }
+        }
     }
 
     fn update(&mut self)

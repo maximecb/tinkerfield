@@ -145,6 +145,11 @@ impl Quat
         Self::new(0.0, s, 0.0, c)
     }
 
+    pub fn from_axis_angle(axis: Vec3, angle_rad: f32) -> Self {
+        let (s, c) = (angle_rad * 0.5).sin_cos();
+        Self::new(axis.x * s, axis.y * s, axis.z * s, c)
+    }
+
     pub fn rotate_vec(self, v: Vec3) -> Vec3 {
         let q_vec = Vec3::new(self.x, self.y, self.z);
         let t = q_vec.cross(v) * 2.0;
