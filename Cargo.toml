@@ -1,6 +1,6 @@
 [package]
-name = "wgpu-test"
-version = "0.1.0"
+name = "tinkerfield"
+version = "0.3.0"
 edition = "2024"
 
 [dependencies]
@@ -9,3 +9,18 @@ png = "0.18.1"
 pollster = "0.4.0"
 wgpu = "29.0.3"
 winit = "0.30.13"
+
+# Fully optimize the dependencies in debug mode
+[profile.dev.package."*"]
+opt-level = 3
+
+# Low optimization level in debug mode
+[profile.dev]
+opt-level = 1
+debug = true
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+panic = "abort"
+codegen-units = 1
