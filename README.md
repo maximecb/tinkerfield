@@ -21,6 +21,14 @@ Running the program:
 cargo run --release
 ```
 
+To load a map file, pass it as an argument:
+
+```
+cargo run --release maps/city.map
+```
+
+Several example maps are provided in the `/maps` directory (`city.map`, `house.map`, `nature.map`).
+
 ## Controls
 
 ### Player Movement
