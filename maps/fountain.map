@@ -1,0 +1,224 @@
+# Elaborate three-tier fountain torture test
+# ~120 curved primitives (cylinders + spheres) all visible from spawn.
+# Structure: 3 concentric step rings → outer basin with 8 columns →
+#            2nd tier basin with 6 columns → 3rd tier basin with 4 columns →
+#            compound 3-section spire with sphere accents.
+
+(player x=0 y=1.8 z=-14 ra=0)
+
+# Ground
+(box x=0 y=-0.05 z=0 sx=40 sy=0.1 sz=40 mat='concrete_01')
+
+# === Plaza disc ===
+(cylinder x=0 y=0.075 z=0 sx=20 sy=0.15 sz=20 mat='concrete_02')
+
+# === Three concentric step rings (y=0 to y=1.0) ===
+
+# Step 1: y=0..0.33, outer r=7, inner r=5.9
+(cylinder x=0 y=0.165 z=0 sx=14.0 sy=0.33 sz=14.0 mat='concrete_02')
+(sub (cylinder x=0 y=0.175 z=0 sx=11.8 sy=0.35 sz=11.8 mat='concrete_02'))
+
+# Step 2: y=0.33..0.67, outer r=5.75, inner r=4.75
+(cylinder x=0 y=0.500 z=0 sx=11.5 sy=0.34 sz=11.5 mat='concrete_02')
+(sub (cylinder x=0 y=0.510 z=0 sx=9.5  sy=0.36 sz=9.5  mat='concrete_02'))
+
+# Step 3: y=0.67..1.0, outer r=4.6, inner r=3.8
+(cylinder x=0 y=0.835 z=0 sx=9.2  sy=0.33 sz=9.2  mat='concrete_02')
+(sub (cylinder x=0 y=0.845 z=0 sx=7.6  sy=0.35 sz=7.6  mat='concrete_02'))
+
+# === Outer basin walls (y=1.0..3.0), outer r=3.8, inner r=3.1 ===
+(cylinder x=0 y=2.000 z=0 sx=7.6 sy=2.00 sz=7.6 mat='concrete_03')
+(sub (cylinder x=0 y=2.010 z=0 sx=6.2 sy=2.02 sz=6.2 mat='concrete_03'))
+
+# Decorative band 1 on outer basin (y=1.75)
+(cylinder x=0 y=1.750 z=0 sx=8.1 sy=0.15 sz=8.1 mat='concrete_02')
+(sub (cylinder x=0 y=1.760 z=0 sx=6.2 sy=0.17 sz=6.2 mat='concrete_02'))
+
+# Decorative band 2 on outer basin (y=2.60)
+(cylinder x=0 y=2.600 z=0 sx=8.1 sy=0.15 sz=8.1 mat='concrete_02')
+(sub (cylinder x=0 y=2.610 z=0 sx=6.2 sy=0.17 sz=6.2 mat='concrete_02'))
+
+# Outer basin rim cap (y=3.0..3.2)
+(cylinder x=0 y=3.100 z=0 sx=8.4 sy=0.20 sz=8.4 mat='concrete_03')
+(sub (cylinder x=0 y=3.110 z=0 sx=5.8 sy=0.22 sz=5.8 mat='concrete_03'))
+
+# === 8 decorative columns on outer rim cap, at radius 3.5 ===
+# Base (y=3.2..3.35), shaft (y=3.35..4.85), capital (y=4.85..5.0), sphere (y=5.1)
+# Positions: 45-degree intervals around r=3.5
+
+# Col N  (x=0, z=3.5)
+(cylinder x=0     y=3.275 z=3.5   sx=0.55 sy=0.15 sz=0.55 mat='concrete_04')
+(cylinder x=0     y=4.100 z=3.5   sx=0.28 sy=1.50 sz=0.28 mat='concrete_04')
+(cylinder x=0     y=4.925 z=3.5   sx=0.55 sy=0.15 sz=0.55 mat='concrete_04')
+(sphere   x=0     y=5.100 z=3.5   s=0.30 mat='concrete_04')
+
+# Col NE (x=2.47, z=2.47)
+(cylinder x=2.47  y=3.275 z=2.47  sx=0.55 sy=0.15 sz=0.55 mat='concrete_04')
+(cylinder x=2.47  y=4.100 z=2.47  sx=0.28 sy=1.50 sz=0.28 mat='concrete_04')
+(cylinder x=2.47  y=4.925 z=2.47  sx=0.55 sy=0.15 sz=0.55 mat='concrete_04')
+(sphere   x=2.47  y=5.100 z=2.47  s=0.30 mat='concrete_04')
+
+# Col E  (x=3.5, z=0)
+(cylinder x=3.5   y=3.275 z=0     sx=0.55 sy=0.15 sz=0.55 mat='concrete_04')
+(cylinder x=3.5   y=4.100 z=0     sx=0.28 sy=1.50 sz=0.28 mat='concrete_04')
+(cylinder x=3.5   y=4.925 z=0     sx=0.55 sy=0.15 sz=0.55 mat='concrete_04')
+(sphere   x=3.5   y=5.100 z=0     s=0.30 mat='concrete_04')
+
+# Col SE (x=2.47, z=-2.47)
+(cylinder x=2.47  y=3.275 z=-2.47 sx=0.55 sy=0.15 sz=0.55 mat='concrete_04')
+(cylinder x=2.47  y=4.100 z=-2.47 sx=0.28 sy=1.50 sz=0.28 mat='concrete_04')
+(cylinder x=2.47  y=4.925 z=-2.47 sx=0.55 sy=0.15 sz=0.55 mat='concrete_04')
+(sphere   x=2.47  y=5.100 z=-2.47 s=0.30 mat='concrete_04')
+
+# Col S  (x=0, z=-3.5)
+(cylinder x=0     y=3.275 z=-3.5  sx=0.55 sy=0.15 sz=0.55 mat='concrete_04')
+(cylinder x=0     y=4.100 z=-3.5  sx=0.28 sy=1.50 sz=0.28 mat='concrete_04')
+(cylinder x=0     y=4.925 z=-3.5  sx=0.55 sy=0.15 sz=0.55 mat='concrete_04')
+(sphere   x=0     y=5.100 z=-3.5  s=0.30 mat='concrete_04')
+
+# Col SW (x=-2.47, z=-2.47)
+(cylinder x=-2.47 y=3.275 z=-2.47 sx=0.55 sy=0.15 sz=0.55 mat='concrete_04')
+(cylinder x=-2.47 y=4.100 z=-2.47 sx=0.28 sy=1.50 sz=0.28 mat='concrete_04')
+(cylinder x=-2.47 y=4.925 z=-2.47 sx=0.55 sy=0.15 sz=0.55 mat='concrete_04')
+(sphere   x=-2.47 y=5.100 z=-2.47 s=0.30 mat='concrete_04')
+
+# Col W  (x=-3.5, z=0)
+(cylinder x=-3.5  y=3.275 z=0     sx=0.55 sy=0.15 sz=0.55 mat='concrete_04')
+(cylinder x=-3.5  y=4.100 z=0     sx=0.28 sy=1.50 sz=0.28 mat='concrete_04')
+(cylinder x=-3.5  y=4.925 z=0     sx=0.55 sy=0.15 sz=0.55 mat='concrete_04')
+(sphere   x=-3.5  y=5.100 z=0     s=0.30 mat='concrete_04')
+
+# Col NW (x=-2.47, z=2.47)
+(cylinder x=-2.47 y=3.275 z=2.47  sx=0.55 sy=0.15 sz=0.55 mat='concrete_04')
+(cylinder x=-2.47 y=4.100 z=2.47  sx=0.28 sy=1.50 sz=0.28 mat='concrete_04')
+(cylinder x=-2.47 y=4.925 z=2.47  sx=0.55 sy=0.15 sz=0.55 mat='concrete_04')
+(sphere   x=-2.47 y=5.100 z=2.47  s=0.30 mat='concrete_04')
+
+# === 2nd-tier platform disc inside outer basin (y=3.2..3.5) ===
+# Provides the floor/ledge that the 2nd basin sits on.
+(cylinder x=0 y=3.350 z=0 sx=5.2 sy=0.30 sz=5.2 mat='concrete_03')
+
+# === 2nd-tier step ring (y=3.5..3.75), outer r=2.4, inner r=1.9 ===
+(cylinder x=0 y=3.625 z=0 sx=4.8 sy=0.25 sz=4.8 mat='concrete_03')
+(sub (cylinder x=0 y=3.635 z=0 sx=3.8 sy=0.27 sz=3.8 mat='concrete_03'))
+
+# === 2nd-tier basin walls (y=3.75..5.0), outer r=2.2, inner r=1.7 ===
+(cylinder x=0 y=4.375 z=0 sx=4.4 sy=1.25 sz=4.4 mat='concrete_03')
+(sub (cylinder x=0 y=4.385 z=0 sx=3.4 sy=1.27 sz=3.4 mat='concrete_03'))
+
+# Decorative band on 2nd-tier basin (y=4.30)
+(cylinder x=0 y=4.300 z=0 sx=4.8 sy=0.14 sz=4.8 mat='concrete_02')
+(sub (cylinder x=0 y=4.310 z=0 sx=3.4 sy=0.16 sz=3.4 mat='concrete_02'))
+
+# 2nd-tier rim cap (y=5.0..5.2)
+(cylinder x=0 y=5.100 z=0 sx=5.0 sy=0.20 sz=5.0 mat='concrete_03')
+(sub (cylinder x=0 y=5.110 z=0 sx=3.0 sy=0.22 sz=3.0 mat='concrete_03'))
+
+# === 6 decorative columns on 2nd-tier rim, at radius 1.9 ===
+# Base (y=5.2..5.32), shaft (y=5.32..6.32), capital (y=6.32..6.44), sphere (y=6.56)
+# Positions: 60-degree intervals around r=1.9
+# sin/cos: 0°=(0,1.9), 60°=(1.65,0.95), 120°=(1.65,-0.95), 180°=(0,-1.9), 240°=(-1.65,-0.95), 300°=(-1.65,0.95)
+
+(cylinder x=0     y=5.260 z=1.90  sx=0.42 sy=0.12 sz=0.42 mat='concrete_04')
+(cylinder x=0     y=5.820 z=1.90  sx=0.20 sy=1.00 sz=0.20 mat='concrete_04')
+(cylinder x=0     y=6.380 z=1.90  sx=0.42 sy=0.12 sz=0.42 mat='concrete_04')
+(sphere   x=0     y=6.540 z=1.90  s=0.22 mat='concrete_04')
+
+(cylinder x=1.65  y=5.260 z=0.95  sx=0.42 sy=0.12 sz=0.42 mat='concrete_04')
+(cylinder x=1.65  y=5.820 z=0.95  sx=0.20 sy=1.00 sz=0.20 mat='concrete_04')
+(cylinder x=1.65  y=6.380 z=0.95  sx=0.42 sy=0.12 sz=0.42 mat='concrete_04')
+(sphere   x=1.65  y=6.540 z=0.95  s=0.22 mat='concrete_04')
+
+(cylinder x=1.65  y=5.260 z=-0.95 sx=0.42 sy=0.12 sz=0.42 mat='concrete_04')
+(cylinder x=1.65  y=5.820 z=-0.95 sx=0.20 sy=1.00 sz=0.20 mat='concrete_04')
+(cylinder x=1.65  y=6.380 z=-0.95 sx=0.42 sy=0.12 sz=0.42 mat='concrete_04')
+(sphere   x=1.65  y=6.540 z=-0.95 s=0.22 mat='concrete_04')
+
+(cylinder x=0     y=5.260 z=-1.90 sx=0.42 sy=0.12 sz=0.42 mat='concrete_04')
+(cylinder x=0     y=5.820 z=-1.90 sx=0.20 sy=1.00 sz=0.20 mat='concrete_04')
+(cylinder x=0     y=6.380 z=-1.90 sx=0.42 sy=0.12 sz=0.42 mat='concrete_04')
+(sphere   x=0     y=6.540 z=-1.90 s=0.22 mat='concrete_04')
+
+(cylinder x=-1.65 y=5.260 z=-0.95 sx=0.42 sy=0.12 sz=0.42 mat='concrete_04')
+(cylinder x=-1.65 y=5.820 z=-0.95 sx=0.20 sy=1.00 sz=0.20 mat='concrete_04')
+(cylinder x=-1.65 y=6.380 z=-0.95 sx=0.42 sy=0.12 sz=0.42 mat='concrete_04')
+(sphere   x=-1.65 y=6.540 z=-0.95 s=0.22 mat='concrete_04')
+
+(cylinder x=-1.65 y=5.260 z=0.95  sx=0.42 sy=0.12 sz=0.42 mat='concrete_04')
+(cylinder x=-1.65 y=5.820 z=0.95  sx=0.20 sy=1.00 sz=0.20 mat='concrete_04')
+(cylinder x=-1.65 y=6.380 z=0.95  sx=0.42 sy=0.12 sz=0.42 mat='concrete_04')
+(sphere   x=-1.65 y=6.540 z=0.95  s=0.22 mat='concrete_04')
+
+# === 3rd-tier platform disc inside 2nd basin (y=5.2..5.5) ===
+(cylinder x=0 y=5.350 z=0 sx=2.8 sy=0.30 sz=2.8 mat='concrete_03')
+
+# === 3rd-tier step ring (y=5.5..5.7), outer r=1.35, inner r=0.95 ===
+(cylinder x=0 y=5.600 z=0 sx=2.7 sy=0.20 sz=2.7 mat='concrete_03')
+(sub (cylinder x=0 y=5.610 z=0 sx=1.9 sy=0.22 sz=1.9 mat='concrete_03'))
+
+# === 3rd-tier basin walls (y=5.7..7.0), outer r=1.2, inner r=0.85 ===
+(cylinder x=0 y=6.350 z=0 sx=2.4 sy=1.30 sz=2.4 mat='concrete_03')
+(sub (cylinder x=0 y=6.360 z=0 sx=1.7 sy=1.32 sz=1.7 mat='concrete_03'))
+
+# Decorative band on 3rd-tier basin (y=6.35)
+(cylinder x=0 y=6.350 z=0 sx=2.7 sy=0.14 sz=2.7 mat='concrete_02')
+(sub (cylinder x=0 y=6.360 z=0 sx=1.7 sy=0.16 sz=1.7 mat='concrete_02'))
+
+# 3rd-tier rim cap (y=7.0..7.2)
+(cylinder x=0 y=7.100 z=0 sx=3.0 sy=0.20 sz=3.0 mat='concrete_03')
+(sub (cylinder x=0 y=7.110 z=0 sx=1.5 sy=0.22 sz=1.5 mat='concrete_03'))
+
+# === 4 small columns on 3rd-tier rim, at radius 1.1 ===
+# Base (y=7.2..7.32), shaft (y=7.32..7.97), capital (y=7.97..8.09), sphere (y=8.22)
+
+(cylinder x=0    y=7.260 z=1.1   sx=0.30 sy=0.12 sz=0.30 mat='concrete_05')
+(cylinder x=0    y=7.645 z=1.1   sx=0.15 sy=0.65 sz=0.15 mat='concrete_05')
+(cylinder x=0    y=8.030 z=1.1   sx=0.30 sy=0.12 sz=0.30 mat='concrete_05')
+(sphere   x=0    y=8.190 z=1.1   s=0.17 mat='concrete_05')
+
+(cylinder x=1.1  y=7.260 z=0     sx=0.30 sy=0.12 sz=0.30 mat='concrete_05')
+(cylinder x=1.1  y=7.645 z=0     sx=0.15 sy=0.65 sz=0.15 mat='concrete_05')
+(cylinder x=1.1  y=8.030 z=0     sx=0.30 sy=0.12 sz=0.30 mat='concrete_05')
+(sphere   x=1.1  y=8.190 z=0     s=0.17 mat='concrete_05')
+
+(cylinder x=0    y=7.260 z=-1.1  sx=0.30 sy=0.12 sz=0.30 mat='concrete_05')
+(cylinder x=0    y=7.645 z=-1.1  sx=0.15 sy=0.65 sz=0.15 mat='concrete_05')
+(cylinder x=0    y=8.030 z=-1.1  sx=0.30 sy=0.12 sz=0.30 mat='concrete_05')
+(sphere   x=0    y=8.190 z=-1.1  s=0.17 mat='concrete_05')
+
+(cylinder x=-1.1 y=7.260 z=0     sx=0.30 sy=0.12 sz=0.30 mat='concrete_05')
+(cylinder x=-1.1 y=7.645 z=0     sx=0.15 sy=0.65 sz=0.15 mat='concrete_05')
+(cylinder x=-1.1 y=8.030 z=0     sx=0.30 sy=0.12 sz=0.30 mat='concrete_05')
+(sphere   x=-1.1 y=8.190 z=0     s=0.17 mat='concrete_05')
+
+# === Central compound spire (y=7.2 and up) ===
+
+# Pedestal base disc
+(cylinder x=0 y=7.300 z=0 sx=1.50 sy=0.20 sz=1.50 mat='concrete_05')
+
+# Spire section 1
+(cylinder x=0 y=7.900 z=0 sx=0.70 sy=1.00 sz=0.70 mat='concrete_05')
+(cylinder x=0 y=8.490 z=0 sx=1.20 sy=0.18 sz=1.20 mat='concrete_05')
+(sphere   x=0 y=8.700 z=0 s=0.32 mat='concrete_05')
+
+# Spire section 2
+(cylinder x=0 y=9.030 z=0 sx=0.52 sy=0.90 sz=0.52 mat='concrete_05')
+(cylinder x=0 y=9.555 z=0 sx=0.88 sy=0.15 sz=0.88 mat='concrete_05')
+(sphere   x=0 y=9.750 z=0 s=0.24 mat='concrete_05')
+
+# Spire section 3
+(cylinder x=0 y=10.030 z=0 sx=0.36 sy=0.80 sz=0.36 mat='concrete_05')
+(cylinder x=0 y=10.490 z=0 sx=0.62 sy=0.12 sz=0.62 mat='concrete_05')
+(sphere   x=0 y=10.670 z=0 s=0.17 mat='concrete_05')
+
+# Finial needle
+(cylinder x=0 y=11.150 z=0 sx=0.12 sy=1.20 sz=0.12 mat='concrete_05')
+# Top orb
+(sphere   x=0 y=11.850 z=0 s=0.20 mat='concrete_05')
+
+# === 4 thin water-jet cylinders rising from inside the 3rd basin ===
+# At radius 0.55, inside the inner wall (r=0.85). Rise from basin floor to above the spire.
+(cylinder x=0     y=9.000 z=0.55  sx=0.07 sy=4.00 sz=0.07 mat='concrete_02')
+(cylinder x=0.55  y=9.000 z=0     sx=0.07 sy=4.00 sz=0.07 mat='concrete_02')
+(cylinder x=0     y=9.000 z=-0.55 sx=0.07 sy=4.00 sz=0.07 mat='concrete_02')
+(cylinder x=-0.55 y=9.000 z=0     sx=0.07 sy=4.00 sz=0.07 mat='concrete_02')
