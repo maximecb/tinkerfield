@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::time::Instant;
 use crate::lexer::{Lexer, ParseError};
 use crate::materials::MaterialRegistry;
 use crate::math::{Vec3, Quat};
@@ -9,6 +10,8 @@ pub fn parse_map(path: &Path, materials: &MaterialRegistry) -> Result<World, Par
     let path_str = path.to_string_lossy();
     let mut lexer = Lexer::from_file(&path_str)?;
     let mut world = World::new();
+    let start = Instant::now();
+    let mut num_brushes = 0;
 
     loop {
         lexer.eat_ws()?;
@@ -24,8 +27,12 @@ pub fn parse_map(path: &Path, materials: &MaterialRegistry) -> Result<World, Par
         } else {
             let brush = parse_entry(&mut lexer, materials)?;
             world.add_brush(brush);
+            num_brushes += 1;
         }
     }
+
+    let elapsed_ms = start.elapsed().as_millis();
+    println!("Loaded map with {} brushes in {}ms", num_brushes, elapsed_ms);
 
     Ok(world)
 }
