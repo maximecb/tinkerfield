@@ -1,0 +1,239 @@
+# Castle on a hill — main keep, four corner towers, curtain walls,
+# gatehouse with arched tunnel, courtyard with well, barrels and a cart.
+# Player spawns south on the path approaching the gatehouse.
+
+(player x=0 y=1.8 z=-28 ra=0)
+
+# === Ground ===
+(box x=0 y=-0.05 z=0 sx=160 sy=0.1 sz=160 mat='grass_01')
+
+# === Hill / stone foundation ===
+(cylinder x=0 y=0.3 z=0 sx=48 sy=0.6 sz=48 mat='rock_01')
+(cylinder x=0 y=0.85 z=0 sx=42 sy=0.5 sz=42 mat='concrete_03')
+
+# Scattered rock outcrops around the hill
+(sphere x=24 y=0.4 z=10 sx=5 sy=3 sz=4 mat='rock_01')
+(sphere x=22 y=0.5 z=-12 sx=4 sy=2.5 sz=3.5 mat='rock_01')
+(sphere x=-22 y=0.4 z=14 sx=4.5 sy=3 sz=3.5 mat='rock_01')
+(sphere x=-20 y=0.6 z=-15 sx=5 sy=3.5 sz=4 mat='rock_01')
+(sphere x=18 y=0.5 z=22 sx=3.5 sy=2.5 sz=3 mat='rock_01')
+(sphere x=-18 y=0.4 z=20 sx=3 sy=2 sz=2.5 mat='rock_01')
+
+# Sandy path from south leading to the gatehouse
+(box x=0 y=1.11 z=-22 sx=4 sy=0.02 sz=14 mat='sand_01')
+(box x=0 y=0.05 z=-32 sx=4 sy=0.02 sz=10 mat='sand_01')
+
+# === Curtain walls (1m thick, 6m tall, between corner towers) ===
+# South wall — two segments flanking the gatehouse
+(box x=-9 y=4.1 z=-15.5 sx=10 sy=6 sz=1 mat='concrete_03')
+(box x=9 y=4.1 z=-15.5 sx=10 sy=6 sz=1 mat='concrete_03')
+# North wall
+(box x=0 y=4.1 z=15.5 sx=28 sy=6 sz=1 mat='concrete_03')
+# East wall
+(box x=15.5 y=4.1 z=0 sx=1 sy=6 sz=28 mat='concrete_03')
+# West wall
+(box x=-15.5 y=4.1 z=0 sx=1 sy=6 sz=28 mat='concrete_03')
+
+# === Arrow slits in walls (sub boxes) ===
+# South-west segment
+(sub (box x=-12 y=4 z=-15.5 sx=0.25 sy=1.4 sz=1.6 mat='concrete_03'))
+(sub (box x=-8 y=4 z=-15.5 sx=0.25 sy=1.4 sz=1.6 mat='concrete_03'))
+# South-east segment
+(sub (box x=8 y=4 z=-15.5 sx=0.25 sy=1.4 sz=1.6 mat='concrete_03'))
+(sub (box x=12 y=4 z=-15.5 sx=0.25 sy=1.4 sz=1.6 mat='concrete_03'))
+# North wall
+(sub (box x=-11 y=4 z=15.5 sx=0.25 sy=1.4 sz=1.6 mat='concrete_03'))
+(sub (box x=-4 y=4 z=15.5 sx=0.25 sy=1.4 sz=1.6 mat='concrete_03'))
+(sub (box x=4 y=4 z=15.5 sx=0.25 sy=1.4 sz=1.6 mat='concrete_03'))
+(sub (box x=11 y=4 z=15.5 sx=0.25 sy=1.4 sz=1.6 mat='concrete_03'))
+# East wall
+(sub (box x=15.5 y=4 z=-11 sx=1.6 sy=1.4 sz=0.25 mat='concrete_03'))
+(sub (box x=15.5 y=4 z=-4 sx=1.6 sy=1.4 sz=0.25 mat='concrete_03'))
+(sub (box x=15.5 y=4 z=4 sx=1.6 sy=1.4 sz=0.25 mat='concrete_03'))
+(sub (box x=15.5 y=4 z=11 sx=1.6 sy=1.4 sz=0.25 mat='concrete_03'))
+# West wall
+(sub (box x=-15.5 y=4 z=-11 sx=1.6 sy=1.4 sz=0.25 mat='concrete_03'))
+(sub (box x=-15.5 y=4 z=-4 sx=1.6 sy=1.4 sz=0.25 mat='concrete_03'))
+(sub (box x=-15.5 y=4 z=4 sx=1.6 sy=1.4 sz=0.25 mat='concrete_03'))
+(sub (box x=-15.5 y=4 z=11 sx=1.6 sy=1.4 sz=0.25 mat='concrete_03'))
+
+# === Crenellations on top of curtain walls (merlons at y=7.6) ===
+# South-west segment (5 merlons, x = -13..-5 step 2)
+(box x=-13 y=7.6 z=-15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=-11 y=7.6 z=-15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=-9 y=7.6 z=-15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=-7 y=7.6 z=-15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=-5 y=7.6 z=-15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+# South-east segment
+(box x=5 y=7.6 z=-15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=7 y=7.6 z=-15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=9 y=7.6 z=-15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=11 y=7.6 z=-15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=13 y=7.6 z=-15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+# North wall (14 merlons, x = -13..13 step 2)
+(box x=-13 y=7.6 z=15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=-11 y=7.6 z=15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=-9 y=7.6 z=15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=-7 y=7.6 z=15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=-5 y=7.6 z=15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=-3 y=7.6 z=15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=-1 y=7.6 z=15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=1 y=7.6 z=15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=3 y=7.6 z=15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=5 y=7.6 z=15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=7 y=7.6 z=15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=9 y=7.6 z=15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=11 y=7.6 z=15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+(box x=13 y=7.6 z=15.5 sx=0.9 sy=1.0 sz=1.0 mat='concrete_03')
+# East wall (14 merlons, z = -13..13 step 2)
+(box x=15.5 y=7.6 z=-13 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=15.5 y=7.6 z=-11 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=15.5 y=7.6 z=-9 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=15.5 y=7.6 z=-7 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=15.5 y=7.6 z=-5 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=15.5 y=7.6 z=-3 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=15.5 y=7.6 z=-1 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=15.5 y=7.6 z=1 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=15.5 y=7.6 z=3 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=15.5 y=7.6 z=5 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=15.5 y=7.6 z=7 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=15.5 y=7.6 z=9 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=15.5 y=7.6 z=11 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=15.5 y=7.6 z=13 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+# West wall (14 merlons)
+(box x=-15.5 y=7.6 z=-13 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=-15.5 y=7.6 z=-11 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=-15.5 y=7.6 z=-9 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=-15.5 y=7.6 z=-7 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=-15.5 y=7.6 z=-5 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=-15.5 y=7.6 z=-3 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=-15.5 y=7.6 z=-1 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=-15.5 y=7.6 z=1 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=-15.5 y=7.6 z=3 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=-15.5 y=7.6 z=5 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=-15.5 y=7.6 z=7 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=-15.5 y=7.6 z=9 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=-15.5 y=7.6 z=11 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+(box x=-15.5 y=7.6 z=13 sx=1.0 sy=1.0 sz=0.9 mat='concrete_03')
+
+# === Corner towers (4 round towers with conical roofs) ===
+# SW tower
+(cylinder x=-16 y=5.6 z=-16 sx=5 sy=10 sz=5 mat='concrete_03')
+(cone x=-16 y=13.1 z=-16 sx=5.5 sy=5 sz=5.5 mat='brick_01')
+(sphere x=-16 y=15.9 z=-16 s=0.4 mat='metal_02')
+(sub (box x=-16 y=5 z=-18.5 sx=0.3 sy=1.5 sz=2 mat='concrete_03'))
+(sub (box x=-18.5 y=5 z=-16 sx=2 sy=1.5 sz=0.3 mat='concrete_03'))
+# SE tower
+(cylinder x=16 y=5.6 z=-16 sx=5 sy=10 sz=5 mat='concrete_03')
+(cone x=16 y=13.1 z=-16 sx=5.5 sy=5 sz=5.5 mat='brick_01')
+(sphere x=16 y=15.9 z=-16 s=0.4 mat='metal_02')
+(sub (box x=16 y=5 z=-18.5 sx=0.3 sy=1.5 sz=2 mat='concrete_03'))
+(sub (box x=18.5 y=5 z=-16 sx=2 sy=1.5 sz=0.3 mat='concrete_03'))
+# NE tower
+(cylinder x=16 y=5.6 z=16 sx=5 sy=10 sz=5 mat='concrete_03')
+(cone x=16 y=13.1 z=16 sx=5.5 sy=5 sz=5.5 mat='brick_01')
+(sphere x=16 y=15.9 z=16 s=0.4 mat='metal_02')
+(sub (box x=16 y=5 z=18.5 sx=0.3 sy=1.5 sz=2 mat='concrete_03'))
+(sub (box x=18.5 y=5 z=16 sx=2 sy=1.5 sz=0.3 mat='concrete_03'))
+# NW tower
+(cylinder x=-16 y=5.6 z=16 sx=5 sy=10 sz=5 mat='concrete_03')
+(cone x=-16 y=13.1 z=16 sx=5.5 sy=5 sz=5.5 mat='brick_01')
+(sphere x=-16 y=15.9 z=16 s=0.4 mat='metal_02')
+(sub (box x=-16 y=5 z=18.5 sx=0.3 sy=1.5 sz=2 mat='concrete_03'))
+(sub (box x=-18.5 y=5 z=16 sx=2 sy=1.5 sz=0.3 mat='concrete_03'))
+
+# === Gatehouse (south wall, center) ===
+# Main block — taller and thicker than the curtain walls
+(box x=0 y=5.6 z=-15.5 sx=8 sy=10 sz=3 mat='concrete_03')
+# Arched tunnel cut through the gatehouse
+(sub (box x=0 y=2.6 z=-15.5 sx=3 sy=4 sz=4 mat='concrete_03'))
+# Rounded top of the tunnel arch (cylinder axis along Z, sub'd from the block)
+(sub (cylinder x=0 y=4.6 z=-15.5 sx=3 sy=4 sz=3 ra=90 rx=1 ry=0 rz=0 mat='concrete_03'))
+# Heavy wooden gate, set back inside the tunnel
+(box x=0 y=2.5 z=-14.1 sx=3 sy=4 sz=0.15 mat='wood_01')
+# Iron studs on the south face of the gate (the side facing the approaching player)
+(sphere x=-1.3 y=4.2 z=-14.2 s=0.12 mat='metal_02')
+(sphere x=1.3 y=4.2 z=-14.2 s=0.12 mat='metal_02')
+(sphere x=-1.3 y=0.8 z=-14.2 s=0.12 mat='metal_02')
+(sphere x=1.3 y=0.8 z=-14.2 s=0.12 mat='metal_02')
+(sphere x=0 y=2.5 z=-14.2 s=0.15 mat='metal_02')
+# Crenellations on top of the gatehouse (front face)
+(box x=-3 y=11.1 z=-16.6 sx=1.0 sy=1.0 sz=0.8 mat='concrete_03')
+(box x=-1 y=11.1 z=-16.6 sx=1.0 sy=1.0 sz=0.8 mat='concrete_03')
+(box x=1 y=11.1 z=-16.6 sx=1.0 sy=1.0 sz=0.8 mat='concrete_03')
+(box x=3 y=11.1 z=-16.6 sx=1.0 sy=1.0 sz=0.8 mat='concrete_03')
+# Crenellations on top of the gatehouse (back face, courtyard side)
+(box x=-3 y=11.1 z=-14.4 sx=1.0 sy=1.0 sz=0.8 mat='concrete_03')
+(box x=-1 y=11.1 z=-14.4 sx=1.0 sy=1.0 sz=0.8 mat='concrete_03')
+(box x=1 y=11.1 z=-14.4 sx=1.0 sy=1.0 sz=0.8 mat='concrete_03')
+(box x=3 y=11.1 z=-14.4 sx=1.0 sy=1.0 sz=0.8 mat='concrete_03')
+
+# === Inner keep (central tower) ===
+# Main cylindrical shaft
+(cylinder x=0 y=8.1 z=4 sx=10 sy=15 sz=10 mat='concrete_03')
+# Window slits, mid-height (cardinal directions)
+(sub (box x=0 y=5 z=-1.5 sx=0.5 sy=2.0 sz=2 mat='concrete_03'))
+(sub (box x=0 y=5 z=9.5 sx=0.5 sy=2.0 sz=2 mat='concrete_03'))
+(sub (box x=5.5 y=5 z=4 sx=2 sy=2.0 sz=0.5 mat='concrete_03'))
+(sub (box x=-5.5 y=5 z=4 sx=2 sy=2.0 sz=0.5 mat='concrete_03'))
+# Window slits, upper level
+(sub (box x=0 y=10 z=-1.5 sx=0.5 sy=2.0 sz=2 mat='concrete_03'))
+(sub (box x=0 y=10 z=9.5 sx=0.5 sy=2.0 sz=2 mat='concrete_03'))
+(sub (box x=5.5 y=10 z=4 sx=2 sy=2.0 sz=0.5 mat='concrete_03'))
+(sub (box x=-5.5 y=10 z=4 sx=2 sy=2.0 sz=0.5 mat='concrete_03'))
+
+# Conical roof on the keep (sits directly on the shaft, with a 1m eave overhang)
+(cone x=0 y=18.6 z=4 sx=12 sy=6 sz=12 mat='brick_01')
+# Finial sphere at the apex
+(sphere x=0 y=21.9 z=4 s=0.5 mat='metal_02')
+# Flag pole rising above the finial
+(cylinder x=0 y=23.5 z=4 sx=0.2 sy=3 sz=0.2 mat='wood_02')
+# Banner attached to the pole (red flag)
+(box x=0.9 y=23.5 z=4 sx=1.5 sy=1.5 sz=0.04 mat='brick_01')
+
+# === Courtyard — well (NW area) ===
+(cylinder x=-9 y=1.4 z=9 sx=2.2 sy=1.0 sz=2.2 mat='concrete_03')
+(sub (cylinder x=-9 y=1.5 z=9 sx=1.6 sy=1.1 sz=1.6 mat='concrete_03'))
+# Four wooden support posts
+(cylinder x=-10.5 y=2.5 z=10.5 sx=0.16 sy=2.0 sz=0.16 mat='wood_01')
+(cylinder x=-7.5 y=2.5 z=10.5 sx=0.16 sy=2.0 sz=0.16 mat='wood_01')
+(cylinder x=-10.5 y=2.5 z=7.5 sx=0.16 sy=2.0 sz=0.16 mat='wood_01')
+(cylinder x=-7.5 y=2.5 z=7.5 sx=0.16 sy=2.0 sz=0.16 mat='wood_01')
+# Small conical roof over the well
+(cone x=-9 y=4.3 z=9 sx=4.5 sy=1.6 sz=4.5 mat='brick_01')
+
+# === Courtyard — stacked barrels (SW area) ===
+(cylinder x=-12 y=1.55 z=-9 sx=1.2 sy=1.0 sz=1.2 mat='wood_01')
+(cylinder x=-10.5 y=1.55 z=-9 sx=1.2 sy=1.0 sz=1.2 mat='wood_01')
+(cylinder x=-12 y=1.55 z=-10.5 sx=1.2 sy=1.0 sz=1.2 mat='wood_01')
+(cylinder x=-11.25 y=2.6 z=-9.75 sx=1.2 sy=1.0 sz=1.2 mat='wood_01')
+
+# === Courtyard — wooden cart (SE area) ===
+# Cart body
+(box x=9 y=1.7 z=-9 sx=2.5 sy=0.8 sz=1.4 mat='wood_02')
+# Cart back panel
+(box x=9 y=2.4 z=-9.6 sx=2.5 sy=0.6 sz=0.1 mat='wood_02')
+# Cart shaft (towards the front)
+(box x=9 y=1.7 z=-7.5 sx=0.15 sy=0.1 sz=1.6 mat='wood_02')
+# Four wheels (cylinders rotated to lie horizontally along x)
+(cylinder x=10.5 y=1.05 z=-8.3 ra=90 rx=0 ry=0 rz=1 sx=0.8 sy=0.4 sz=0.8 mat='wood_01')
+(cylinder x=7.5 y=1.05 z=-8.3 ra=90 rx=0 ry=0 rz=1 sx=0.8 sy=0.4 sz=0.8 mat='wood_01')
+(cylinder x=10.5 y=1.05 z=-9.7 ra=90 rx=0 ry=0 rz=1 sx=0.8 sy=0.4 sz=0.8 mat='wood_01')
+(cylinder x=7.5 y=1.05 z=-9.7 ra=90 rx=0 ry=0 rz=1 sx=0.8 sy=0.4 sz=0.8 mat='wood_01')
+
+# === Decorative trees outside the castle ===
+# West tree
+(cylinder x=-30 y=2.5 z=0 sx=0.7 sy=5 sz=0.7 mat='wood_02')
+(sphere x=-30 y=6.5 z=0 sx=3.5 sy=3.5 sz=3.5 mat='grass_01')
+(sphere x=-31.5 y=5.8 z=1 sx=2.5 sy=2.5 sz=2.5 mat='grass_01')
+(sphere x=-28.5 y=5.8 z=-1 sx=2.5 sy=2.5 sz=2.5 mat='grass_01')
+# East tree
+(cylinder x=30 y=2.5 z=0 sx=0.7 sy=5 sz=0.7 mat='wood_02')
+(sphere x=30 y=6.5 z=0 sx=3.5 sy=3.5 sz=3.5 mat='grass_01')
+(sphere x=31.5 y=5.8 z=1 sx=2.5 sy=2.5 sz=2.5 mat='grass_01')
+(sphere x=28.5 y=5.8 z=-1 sx=2.5 sy=2.5 sz=2.5 mat='grass_01')
+# Tree behind the castle
+(cylinder x=-8 y=2.5 z=32 sx=0.7 sy=5 sz=0.7 mat='wood_02')
+(sphere x=-8 y=6.5 z=32 sx=3.5 sy=3.5 sz=3.5 mat='grass_01')
+(cylinder x=8 y=2.5 z=32 sx=0.7 sy=5 sz=0.7 mat='wood_02')
+(sphere x=8 y=6.5 z=32 sx=3.5 sy=3.5 sz=3.5 mat='grass_01')
