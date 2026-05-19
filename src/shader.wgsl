@@ -98,6 +98,17 @@ fn sd_cylinder(p: vec3<f32>, h: f32, r: f32) -> f32 {
     return min(max(d.x, d.y), 0.0) + length(max(d, vec2<f32>(0.0)));
 }
 
+// Elliptical cylinder with base radii (a, c) and half-height h. Same approach as
+// sd_elliptical_cone: normalize only the horizontal axes so the cylinder in
+// transformed space is circular at radius max(a, c), then scale the result by
+// min/max to recover a Lipschitz lower bound on the true distance. Exact for
+// a == c; the y axis is untouched so tall thin cylinders stay fast.
+fn sd_elliptical_cylinder(p: vec3<f32>, h: f32, a: f32, c: f32) -> f32 {
+    let r = max(a, c);
+    let p_norm = vec3<f32>(p.x * (r / a), p.y, p.z * (r / c));
+    return sd_cylinder(p_norm, h, r) * (min(a, c) / r);
+}
+
 fn sd_cone(p: vec3<f32>, h: f32, r1: f32, r2: f32) -> f32 {
     let q = vec2<f32>(length(p.xz), p.y);
     let k1 = vec2<f32>(r2, h);
@@ -106,6 +117,18 @@ fn sd_cone(p: vec3<f32>, h: f32, r1: f32, r2: f32) -> f32 {
     let cb = q - k1 + k2 * clamp(dot(k1 - q, k2) / dot(k2, k2), 0.0, 1.0);
     let s = select(1.0, -1.0, cb.x < 0.0 && ca.y < 0.0);
     return s * sqrt(min(dot(ca, ca), dot(cb, cb)));
+}
+
+// Elliptical cone with apex at +y, base radii (a, c) at -y. Normalizes only the
+// horizontal axes so the cone in transformed space is circular at radius max(a, c);
+// the trailing min/max factor recovers a Lipschitz lower bound on the true distance.
+// Exact when a == c; conservative (slower stepping) when a != c, scaling with the
+// horizontal aspect ratio only — the y axis is left alone, so tall thin cones don't
+// suffer.
+fn sd_elliptical_cone(p: vec3<f32>, h: f32, a: f32, c: f32) -> f32 {
+    let r = max(a, c);
+    let p_norm = vec3<f32>(p.x * (r / a), p.y, p.z * (r / c));
+    return sd_cone(p_norm, h, r, 0.0) * (min(a, c) / r);
 }
 
 fn sd_ellipsoid(p: vec3<f32>, r: vec3<f32>) -> f32 {
@@ -129,12 +152,11 @@ fn sdf_brush(p_world: vec3<f32>, brush_idx: u32) -> f32 {
     if (b.kind == 0u) { // BOX
         d = sd_box(p_local, s);
     } else if (b.kind == 1u) { // CYLINDER
-        // Scaling trick: scale point, call unit primitive, multiply by min scale
-        d = sd_cylinder(p_local / s, 1.0, 1.0) * min(s.x, min(s.y, s.z));
+        d = sd_elliptical_cylinder(p_local, s.y, s.x, s.z);
     } else if (b.kind == 2u) { // SPHERE (Ellipsoid)
         d = sd_ellipsoid(p_local, s);
     } else if (b.kind == 3u) { // CONE
-        d = sd_cone(p_local / s, 1.0, 1.0, 0.0) * min(s.x, min(s.y, s.z));
+        d = sd_elliptical_cone(p_local, s.y, s.x, s.z);
     }
 
     return d;
