@@ -107,6 +107,74 @@ impl Player
     }
 }
 
+fn sdf_box(p: Vec3, half: Vec3) -> f32 {
+    let qx = p.x.abs() - half.x;
+    let qy = p.y.abs() - half.y;
+    let qz = p.z.abs() - half.z;
+    let outside = Vec3::new(qx.max(0.0), qy.max(0.0), qz.max(0.0)).length();
+    let inside = qx.max(qy).max(qz).min(0.0);
+    outside + inside
+}
+
+fn sdf_cylinder_circular(p: Vec3, half_h: f32, r: f32) -> f32 {
+    let horiz = (p.x * p.x + p.z * p.z).sqrt();
+    let dx = horiz - r;
+    let dy = p.y.abs() - half_h;
+    let ox = dx.max(0.0);
+    let oy = dy.max(0.0);
+    (ox * ox + oy * oy).sqrt() + dx.max(dy).min(0.0)
+}
+
+fn sdf_elliptical_cylinder(p: Vec3, half_h: f32, rx: f32, rz: f32) -> f32 {
+    let r = rx.max(rz);
+    let p_norm = Vec3::new(p.x * (r / rx), p.y, p.z * (r / rz));
+    sdf_cylinder_circular(p_norm, half_h, r) * (rx.min(rz) / r)
+}
+
+fn sdf_ellipsoid(p: Vec3, r: Vec3) -> f32 {
+    let k0 = Vec3::new(p.x / r.x, p.y / r.y, p.z / r.z).length();
+    let k1 = Vec3::new(p.x / (r.x * r.x), p.y / (r.y * r.y), p.z / (r.z * r.z)).length();
+    k0 * (k0 - 1.0) / k1
+}
+
+fn sd_cone_circular(horiz: f32, py: f32, half_h: f32, r1: f32, r2: f32) -> f32 {
+    let qx = horiz;
+    let qy = py;
+    let k1x = r2;
+    let k1y = half_h;
+    let k2x = r2 - r1;
+    let k2y = 2.0 * half_h;
+    let clamp_r = if qy < 0.0 { r1 } else { r2 };
+    let cax = qx - qx.min(clamp_r);
+    let cay = qy.abs() - half_h;
+    let t = ((k1x - qx) * k2x + (k1y - qy) * k2y) / (k2x * k2x + k2y * k2y);
+    let t = t.clamp(0.0, 1.0);
+    let cbx = qx - k1x + k2x * t;
+    let cby = qy - k1y + k2y * t;
+    let s = if cbx < 0.0 && cay < 0.0 { -1.0f32 } else { 1.0f32 };
+    s * (cax * cax + cay * cay).min(cbx * cbx + cby * cby).sqrt()
+}
+
+fn sdf_elliptical_cone(p: Vec3, half_h: f32, rx: f32, rz: f32) -> f32 {
+    let r = rx.max(rz);
+    let px_n = p.x * (r / rx);
+    let pz_n = p.z * (r / rz);
+    let horiz = (px_n * px_n + pz_n * pz_n).sqrt();
+    sd_cone_circular(horiz, p.y, half_h, r, 0.0) * (rx.min(rz) / r)
+}
+
+fn brush_sdf(brush: &Brush, p: Vec3) -> f32 {
+    let p_local = brush.rot.conjugate().rotate_vec(p - brush.pos);
+    let s = brush.scale * 0.5;
+    match brush.kind {
+        KIND_BOX      => sdf_box(p_local, s),
+        KIND_CYLINDER => sdf_elliptical_cylinder(p_local, s.y, s.x, s.z),
+        KIND_SPHERE   => sdf_ellipsoid(p_local, s),
+        KIND_CONE     => sdf_elliptical_cone(p_local, s.y, s.x, s.z),
+        _             => 1e10,
+    }
+}
+
 /// Maximum number of brushes in our game world
 pub const MAX_BRUSHES: usize = (u16::MAX - 1) as usize;
 
@@ -383,6 +451,50 @@ impl World
             self.grid_size[0], self.grid_size[1], self.grid_size[2],
             count, total_indices
         );
+    }
+
+    /// Cast a ray and return the index of the first brush hit.
+    /// If `select_sub` is false, OP_SUB brushes are skipped.
+    pub fn ray_cast(&self, origin: Vec3, dir: Vec3, select_sub: bool) -> Option<u16> {
+        let max_t = 100.0f32;
+        let hit_epsilon = 0.001f32;
+        let max_steps = 128;
+
+        let mut t = 0.0f32;
+
+        for _ in 0..max_steps {
+            if t >= max_t {
+                break;
+            }
+            let p = origin + dir * t;
+
+            let mut min_d = f32::INFINITY;
+            let mut closest_idx = None;
+
+            for i in 0..self.brushes.len() {
+                let idx = i as u16;
+                if self.free_indices.contains(&idx) {
+                    continue;
+                }
+                let brush = &self.brushes[i];
+                if !select_sub && brush.op == OP_SUB {
+                    continue;
+                }
+                let d = brush_sdf(brush, p);
+                if d < min_d {
+                    min_d = d;
+                    closest_idx = Some(idx);
+                }
+            }
+
+            if min_d < hit_epsilon {
+                return closest_idx;
+            }
+
+            t += min_d.max(hit_epsilon);
+        }
+
+        None
     }
 
     /// Send player data to the GPU

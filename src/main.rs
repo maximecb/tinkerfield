@@ -12,7 +12,7 @@ use std::time::Instant;
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
-    event::{DeviceEvent, DeviceId, KeyEvent, ElementState, WindowEvent},
+    event::{DeviceEvent, DeviceId, KeyEvent, ElementState, MouseButton, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
     window::{CursorGrabMode, Window, WindowId},
@@ -62,6 +62,10 @@ struct App
     /// Accumulated sub-grid mouse movement, carried forward until it crosses a grid boundary.
     drag_remainder: Vec3,
 
+    /// Set on Focused(true); cursor recenter is deferred to the next frame to avoid
+    /// triggering a window drag when refocusing via the title bar on macOS.
+    pending_recenter: bool,
+
     /// Map file to load, also used for Ctrl+R hot-reload.
     map_file: Option<PathBuf>,
 }
@@ -89,6 +93,7 @@ impl App
             edit_mode: EditMode::Position,
             edit_axes: None,
             drag_remainder: Vec3::new(0.0, 0.0, 0.0),
+            pending_recenter: false,
             map_file,
         };
 
@@ -496,6 +501,14 @@ impl ApplicationHandler for App
                 .unwrap(),
         );
 
+        // Center, hide, and grab the cursor now. Safe to do directly here since no
+        // title bar drag is in progress at window creation time.
+        let size = window.inner_size();
+        let _ = window.set_cursor_position(winit::dpi::PhysicalPosition::new(size.width / 2, size.height / 2));
+        let _ = window.set_cursor_grab(CursorGrabMode::Locked)
+            .or_else(|_| window.set_cursor_grab(CursorGrabMode::Confined));
+        window.set_cursor_visible(false);
+
         let gpu_state = pollster::block_on(gpu::GPUState::new(Arc::clone(&window), &self.materials));
 
         // Perform initial upload
@@ -537,12 +550,21 @@ impl ApplicationHandler for App
                 }
             }
 
+            WindowEvent::MouseInput {
+                state: ElementState::Pressed,
+                button: MouseButton::Left,
+                ..
+            } => {
+                let origin = self.world.player.position;
+                let dir = self.world.player.forward;
+                self.selected = self.world.ray_cast(origin, dir, true);
+            }
+
             WindowEvent::Focused(true) => {
                 if let Some(gpu_state) = self.gpu_state.as_ref() {
-                    let _ = gpu_state.window.set_cursor_grab(CursorGrabMode::Locked)
-                        .or_else(|_| gpu_state.window.set_cursor_grab(CursorGrabMode::Confined));
                     gpu_state.window.set_cursor_visible(false);
                 }
+                self.pending_recenter = true;
             }
 
             WindowEvent::RedrawRequested => {
@@ -582,8 +604,24 @@ impl ApplicationHandler for App
 
     fn device_event(&mut self, _event_loop: &ActiveEventLoop, _device_id: DeviceId, event: DeviceEvent)
     {
-        if let DeviceEvent::MouseMotion { delta } = event {
-            self.mouse_move(delta.0, delta.1);
+        match event {
+            DeviceEvent::MouseMotion { delta } => {
+                self.mouse_move(delta.0, delta.1);
+            }
+            // Recenter on raw mouse-up; this fires for title bar clicks too,
+            // which WindowEvent::MouseInput does not.
+            DeviceEvent::Button { state: ElementState::Released, .. } => {
+                if self.pending_recenter {
+                    if let Some(gpu_state) = self.gpu_state.as_ref() {
+                        let size = gpu_state.window.inner_size();
+                        let _ = gpu_state.window.set_cursor_position(winit::dpi::PhysicalPosition::new(size.width / 2, size.height / 2));
+                        let _ = gpu_state.window.set_cursor_grab(CursorGrabMode::Locked)
+                            .or_else(|_| gpu_state.window.set_cursor_grab(CursorGrabMode::Confined));
+                    }
+                    self.pending_recenter = false;
+                }
+            }
+            _ => {}
         }
     }
 }

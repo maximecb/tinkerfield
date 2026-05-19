@@ -150,6 +150,10 @@ impl Quat
         Self::new(axis.x * s, axis.y * s, axis.z * s, c)
     }
 
+    pub fn conjugate(self) -> Self {
+        Self::new(-self.x, -self.y, -self.z, self.w)
+    }
+
     pub fn rotate_vec(self, v: Vec3) -> Vec3 {
         let q_vec = Vec3::new(self.x, self.y, self.z);
         let t = q_vec.cross(v) * 2.0;
