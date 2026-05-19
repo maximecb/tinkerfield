@@ -2,7 +2,7 @@ use std::path::Path;
 use crate::lexer::{Lexer, ParseError};
 use crate::materials::MaterialRegistry;
 use crate::math::{Vec3, Quat};
-use crate::world::{Brush, World, KIND_BOX, KIND_CYLINDER, KIND_SPHERE, OP_ADD, OP_SUB};
+use crate::world::{Brush, World, KIND_BOX, KIND_CYLINDER, KIND_SPHERE, KIND_CONE, OP_ADD, OP_SUB};
 
 pub fn parse_map(path: &Path, materials: &MaterialRegistry) -> Result<World, ParseError>
 {
@@ -80,6 +80,7 @@ fn parse_entry(lexer: &mut Lexer, materials: &MaterialRegistry) -> Result<Brush,
         "box"      => parse_brush(lexer, materials, KIND_BOX),
         "cylinder" => parse_brush(lexer, materials, KIND_CYLINDER),
         "sphere"   => parse_brush(lexer, materials, KIND_SPHERE),
+        "cone"     => parse_brush(lexer, materials, KIND_CONE),
         _ => lexer.parse_error(&format!("unknown shape \"{}\"", keyword)),
     }
 }
