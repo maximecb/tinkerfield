@@ -50,7 +50,7 @@ Several example maps are provided in the `/maps` directory (`city.map`, `house.m
 - **N / M**: Cycle to the previous / next material
 - **Ctrl+C / Ctrl+V**: Copy / paste the selected brush
 - **Ctrl+R**: Reload the current map file from disk
-- **Ctrl+S**: Save the current world back to the map file (preserving comments and whitespace)
+- **Ctrl+S**: Save the world back to the map file
 
 ### Edit Modes
 

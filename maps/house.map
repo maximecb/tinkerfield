@@ -1,7 +1,7 @@
 # House map — brick exterior, detailed interior
 # House footprint: x -5 to 5, z 0 to 10. Player spawns outside facing north.
 
-(player x=0 y=1.8 z=-5 ra=0)
+(player x=0 y=1.8 z=-5 yaw=0)
 
 # === Outdoor ground ===
 (box x=0 y=-0.05 z=0 sx=60 sy=0.1 sz=60 mat='grass_01')

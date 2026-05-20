@@ -62,7 +62,8 @@ fn parse_player(lexer: &mut Lexer, world: &mut World) -> Result<(), ParseError>
     let mut x = world.player.position.x;
     let mut y = world.player.position.y;
     let mut z = world.player.position.z;
-    let mut ra = world.player.yaw;
+    let mut yaw = world.player.yaw;
+    let mut pitch = world.player.pitch;
 
     loop {
         lexer.eat_ws()?;
@@ -75,16 +76,18 @@ fn parse_player(lexer: &mut Lexer, world: &mut World) -> Result<(), ParseError>
         lexer.expect_token("=")?;
 
         match key.as_str() {
-            "x"  => x  = parse_f32(lexer)?,
-            "y"  => y  = parse_f32(lexer)?,
-            "z"  => z  = parse_f32(lexer)?,
-            "ra" => ra = parse_f32(lexer)?,
+            "x"     => x     = parse_f32(lexer)?,
+            "y"     => y     = parse_f32(lexer)?,
+            "z"     => z     = parse_f32(lexer)?,
+            "yaw"   => yaw   = parse_f32(lexer)?,
+            "pitch" => pitch = parse_f32(lexer)?,
             _ => return lexer.parse_error(&format!("unknown player attribute \"{}\"", key)),
         }
     }
 
     world.player.position = Vec3::new(x, y, z);
-    world.player.yaw = ra;
+    world.player.yaw = yaw;
+    world.player.pitch = pitch;
     world.player.update_basis();
 
     Ok(())
@@ -232,13 +235,18 @@ pub fn save_map(path: &Path, world: &World, materials: &MaterialRegistry) -> io:
 
 fn serialize_player(p: &Player) -> String
 {
-    format!(
-        "(player x={} y={} z={} ra={})",
+    let mut s = format!(
+        "(player x={} y={} z={} yaw={}",
         fmt_f32(p.position.x),
         fmt_f32(p.position.y),
         fmt_f32(p.position.z),
         fmt_f32(p.yaw),
-    )
+    );
+    if p.pitch != 0.0 {
+        s.push_str(&format!(" pitch={}", fmt_f32(p.pitch)));
+    }
+    s.push(')');
+    s
 }
 
 fn serialize_brush(b: &Brush, materials: &MaterialRegistry) -> String

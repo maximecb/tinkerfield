@@ -4,7 +4,7 @@
 #            2nd tier basin with 6 columns → 3rd tier basin with 4 columns →
 #            compound 3-section spire with sphere accents.
 
-(player x=0 y=1.8 z=-14 ra=0)
+(player x=0 y=1.8 z=-14 yaw=0)
 
 # Ground
 (box x=0 y=-0.05 z=0 sx=40 sy=0.1 sz=40 mat='concrete_01')
