@@ -2,7 +2,7 @@
 
 Tinkerfield is a toy 3D game engine / construction game based on Signed
 Distance Fields (SDFs), where you can edit the world in real time. It uses
-SDFs for all 3D graphics (no polygons).
+SDFs for all 3D graphics (no polygons or meshes).
 
 One of my main goals with this project just to show people we're already at
 the point where it's possible to build some kind of game engine with SDFs.

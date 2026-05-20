@@ -150,6 +150,23 @@ impl Quat
         Self::new(axis.x * s, axis.y * s, axis.z * s, c)
     }
 
+    /// Recover an (axis, angle) pair from this quaternion. Returns the
+    /// default Y axis with a zero angle when the rotation is identity.
+    pub fn to_axis_angle(self) -> (Vec3, f32) {
+        let q = if self.w < 0.0 {
+            Self::new(-self.x, -self.y, -self.z, -self.w)
+        } else {
+            self
+        };
+        let w = q.w.clamp(-1.0, 1.0);
+        let s = (1.0 - w * w).sqrt();
+        if s < 1e-6 {
+            (Vec3::new(0.0, 1.0, 0.0), 0.0)
+        } else {
+            (Vec3::new(q.x / s, q.y / s, q.z / s), 2.0 * w.acos())
+        }
+    }
+
     pub fn conjugate(self) -> Self {
         Self::new(-self.x, -self.y, -self.z, self.w)
     }

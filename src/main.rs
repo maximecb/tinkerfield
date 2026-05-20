@@ -66,8 +66,9 @@ struct App
     /// triggering a window drag when refocusing via the title bar on macOS.
     pending_recenter: bool,
 
-    /// Map file to load, also used for Ctrl+R hot-reload.
-    map_file: Option<PathBuf>,
+    /// Map file to load, also used for Ctrl+R hot-reload and Ctrl+S save.
+    /// Defaults to "untitled.map" when no map argument was provided.
+    map_file: PathBuf,
 }
 
 impl App
@@ -78,6 +79,9 @@ impl App
 
         let world = world::World::new();
         let materials = MaterialRegistry::load();
+
+        let load_from_arg = map_file.is_some();
+        let map_file = map_file.unwrap_or_else(|| PathBuf::from("untitled.map"));
 
         let mut app = Self {
             gpu_state: None,
@@ -97,7 +101,7 @@ impl App
             map_file,
         };
 
-        if app.map_file.is_some() {
+        if load_from_arg {
             app.load_map();
             return app;
         }
@@ -130,14 +134,9 @@ impl App
     /// Load or reload the map
     fn load_map(&mut self)
     {
-        let Some(path) = self.map_file.clone() else {
-            eprintln!("No map file specified");
-            return;
-        };
+        println!("Loading map: {}", self.map_file.display());
 
-        println!("Loading map: {}", path.display());
-
-        match maps::parse_map(&path, &self.materials) {
+        match maps::parse_map(&self.map_file, &self.materials) {
             Ok(world) => {
                 self.world = world;
                 self.selected = None;
@@ -146,6 +145,15 @@ impl App
             Err(e) => {
                 eprintln!("Map parse error: {}", e);
             }
+        }
+    }
+
+    /// Save the map back to its file
+    fn save_map(&self)
+    {
+        match maps::save_map(&self.map_file, &self.world, &self.materials) {
+            Ok(()) => println!("Saved map: {}", self.map_file.display()),
+            Err(e) => eprintln!("Map save error: {}", e),
         }
     }
 
@@ -215,6 +223,11 @@ impl App
                     self.load_map();
                 }
 
+                // Save the map back to file
+                KeyS => {
+                    self.save_map();
+                }
+
                 _ => {}
             }
 
@@ -279,7 +292,7 @@ impl App
             // Delete selected object
             Delete | Backspace => {
                 if let Some(brush_id) = self.selected {
-                    self.world.remove_brush(brush_id);
+                    self.world.delete_brush(brush_id);
                     self.upload_world();
                     self.selected = None;
                 }

@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use std::collections::HashMap;
 use std::time::Instant;
 use crate::gpu::GPUWorld;
 use crate::math::*;
@@ -214,6 +215,14 @@ pub struct World
     pub grid_size: [u32; 3],
 
     pub player: Player,
+
+    /// Raw text (whitespace + comments) preceding the first entity in the
+    /// source map, preserved across load/save so file-level comments survive.
+    pub header: String,
+
+    /// Leading whitespace + comments captured above each brush when loaded
+    /// from a map file. Keyed by brush id; empty for brushes added at runtime.
+    pub comments: HashMap<u16, String>,
 }
 
 impl World
@@ -240,11 +249,35 @@ impl World
                 pitch: 0.0,
                 _pad4: [0.0; 2],
             },
+            header: String::new(),
+            comments: HashMap::new(),
         };
 
         world.player.update_basis();
 
         world
+    }
+
+    pub fn set_header(&mut self, s: String)
+    {
+        self.header = s;
+    }
+
+    /// Permanently delete a brush and discard its associated comments
+    pub fn delete_brush(&mut self, index: u16) -> Brush
+    {
+        self.comments.remove(&index);
+        self.remove_brush(index)
+    }
+
+    /// Iterate brushes in storage order, skipping freed slots
+    pub fn active_brushes(&self) -> impl Iterator<Item = (u16, &Brush)>
+    {
+        let free = &self.free_indices;
+        self.brushes.iter().enumerate().filter_map(move |(i, b)| {
+            let id = i as u16;
+            if free.contains(&id) { None } else { Some((id, b)) }
+        })
     }
 
     /// Rotate the player's view

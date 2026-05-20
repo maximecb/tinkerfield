@@ -186,6 +186,18 @@ impl Lexer
         name_from_id(self.file_id)
     }
 
+    /// Current character index into the input
+    pub fn cur_idx(&self) -> usize
+    {
+        self.idx
+    }
+
+    /// Capture the raw source between `start` and the current index
+    pub fn capture_from(&self, start: usize) -> String
+    {
+        self.input[start..self.idx].iter().collect()
+    }
+
     pub fn get_pos(&self) -> SrcPos
     {
         SrcPos {
