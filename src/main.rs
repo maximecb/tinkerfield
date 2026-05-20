@@ -1,3 +1,5 @@
+#![allow(unused_parens)]
+
 mod world;
 mod math;
 mod gpu;
@@ -554,7 +556,15 @@ impl ApplicationHandler for App
             } => {
                 match state {
                     ElementState::Pressed => {
-                        self.key_down.insert(key);
+                        let ctrl_down = (
+                            self.key_down.contains(&KeyCode::ControlLeft) ||
+                            self.key_down.contains(&KeyCode::SuperLeft)
+                        );
+
+                        if !ctrl_down {
+                            self.key_down.insert(key);
+                        }
+
                         self.key_press(key);
                     }
                     ElementState::Released => {
