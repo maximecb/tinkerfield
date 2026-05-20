@@ -36,6 +36,7 @@ Several example maps are provided in the `/maps` directory (`city.map`, `house.m
 - **W / S** (or Arrow keys): Move forward / backward
 - **A / D** (or Arrow keys): Strafe left / right
 - **Mouse**: Look around
+- **Left Click**: Select the brush under the crosshair
 - **Escape**: Exit
 
 ### Brush Management
@@ -48,6 +49,8 @@ Several example maps are provided in the `/maps` directory (`city.map`, `house.m
 - **Delete / Backspace**: Remove the selected brush
 - **N / M**: Cycle to the previous / next material
 - **Ctrl+C / Ctrl+V**: Copy / paste the selected brush
+- **Ctrl+R**: Reload the current map file from disk
+- **Ctrl+S**: Save the current world back to the map file (preserving comments and whitespace)
 
 ### Edit Modes
 
