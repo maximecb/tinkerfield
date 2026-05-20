@@ -292,7 +292,7 @@ impl App
             // Delete selected object
             Delete | Backspace => {
                 if let Some(brush_id) = self.selected {
-                    self.world.delete_brush(brush_id);
+                    self.world.remove_brush(brush_id);
                     self.upload_world();
                     self.selected = None;
                 }
@@ -330,9 +330,9 @@ impl App
             // Subtract the selected object from the world
             KeyQ => {
                 if let Some(brush_id) = self.selected {
-                    let mut brush = self.world.remove_brush(brush_id);
+                    let mut brush = self.world.get_brush(brush_id);
                     brush.op = world::OP_SUB;
-                    self.selected = Some(self.world.add_brush(brush));
+                    self.world.set_brush(brush_id, brush);
                     self.upload_world();
                 }
             }
@@ -341,9 +341,9 @@ impl App
             KeyT => {
                 // If a brush is currently selected
                 if let Some(brush_id) = self.selected {
-                    let mut brush = self.world.remove_brush(brush_id);
+                    let mut brush = self.world.get_brush(brush_id);
                     brush.kind = (brush.kind + 1) % NUM_BRUSH_KINDS;
-                    self.selected = Some(self.world.add_brush(brush));
+                    self.world.set_brush(brush_id, brush);
                     self.upload_world();
                     return;
                 }
@@ -353,7 +353,7 @@ impl App
             KeyN => {
                 if let Some(brush_id) = self.selected {
                     let num_materials = self.materials.num_materials();
-                    let mut brush = self.world.remove_brush(brush_id);
+                    let mut brush = self.world.get_brush(brush_id);
 
                     brush.material = if brush.material > 0 {
                         brush.material - 1
@@ -363,7 +363,7 @@ impl App
                     let material_name = self.materials.material_name(brush.material);
                     println!("Material: {} (material id={})", material_name, brush.material);
 
-                    self.selected = Some(self.world.add_brush(brush));
+                    self.world.set_brush(brush_id, brush);
                     self.upload_world();
                     return;
                 }
@@ -373,13 +373,13 @@ impl App
             KeyM => {
                 if let Some(brush_id) = self.selected {
                     let num_materials = self.materials.num_materials();
-                    let mut brush = self.world.remove_brush(brush_id);
+                    let mut brush = self.world.get_brush(brush_id);
 
                     brush.material = (brush.material + 1) % num_materials;
                     let material_name = self.materials.material_name(brush.material);
                     println!("Material: {} (material id={})", material_name, brush.material);
 
-                    self.selected = Some(self.world.add_brush(brush));
+                    self.world.set_brush(brush_id, brush);
                     self.upload_world();
                     return;
                 }
@@ -422,9 +422,9 @@ impl App
 
                 // Only rebuild the world if the position actually changed
                 if snapped.length_sq() > 0.0 {
-                    let mut brush = self.world.remove_brush(brush_id);
+                    let mut brush = self.world.get_brush(brush_id);
                     brush.pos = (brush.pos + snapped).snap(0.1);
-                    self.selected = Some(self.world.add_brush(brush));
+                    self.world.set_brush(brush_id, brush);
                     self.upload_world();
                 }
                 return;
@@ -448,7 +448,7 @@ impl App
 
                 // Only rebuild the world if the scale actually changed
                 if snapped.length_sq() > 0.0 {
-                    let mut brush = self.world.remove_brush(brush_id);
+                    let mut brush = self.world.get_brush(brush_id);
                     let old_scale = brush.scale;
 
                     brush.scale += snapped;
@@ -471,7 +471,7 @@ impl App
                         brush.pos.y += actual_delta.y * 0.5;
                     }
 
-                    self.selected = Some(self.world.add_brush(brush));
+                    self.world.set_brush(brush_id, brush);
                     self.upload_world();
                 }
                 return;

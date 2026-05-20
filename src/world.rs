@@ -263,11 +263,15 @@ impl World
         self.header = s;
     }
 
-    /// Permanently delete a brush and discard its associated comments
-    pub fn delete_brush(&mut self, index: u16) -> Brush
+    /// Replace the brush at `index` and rebuild the grid. Used for in-place
+    /// edits (rotate/scale/material/etc.) so the slot — and any associated
+    /// comments — stay tied to the same brush identity.
+    pub fn set_brush(&mut self, index: u16, brush: Brush)
     {
-        self.comments.remove(&index);
-        self.remove_brush(index)
+        assert!((index as usize) < self.brushes.len());
+        assert!(!self.free_indices.contains(&index));
+        self.brushes[index as usize] = brush;
+        self.rebuild_grid();
     }
 
     /// Iterate brushes in storage order, skipping freed slots
@@ -302,7 +306,7 @@ impl World
         self.brushes[index as usize]
     }
 
-    /// Remove a brush from the world
+    /// Permanently remove a brush from the world and drop its associated comments
     pub fn remove_brush(&mut self, index: u16) -> Brush
     {
         assert!((index as usize) < self.brushes.len());
@@ -320,6 +324,7 @@ impl World
             _pad: [0; 3],
         };
 
+        self.comments.remove(&index);
         self.free_indices.push(index);
         self.rebuild_grid();
 
