@@ -1,0 +1,187 @@
+# Collision detection / response test arena
+# Scale is metric. Player is ~1.8m tall (eye at y=1.8).
+#
+# Layout (looking north from spawn, +z = north, +x = east):
+#
+#                                NORTH
+#     +--------------------------------------------------------+
+#     |              upper platform (y=3m)                     |
+#     |     west:                       east:                  |
+#     |     multi-level                 stacked jump-stairs    |
+#     |     platforms                   stepping stones        |
+#     |     + ramps                     + tall stack           |
+#     |                                                        |
+#     |        << main 15-step staircase (rise 3m) >>          |
+#     |                                                        |
+#     |     pillars / corners / narrow gaps / low ceiling      |
+#     |        small-step row     (path tests)     pit         |
+#     |                                                        |
+#     |                    SPAWN PLAZA                         |
+#     +--------------------------------------------------------+
+#                                SOUTH
+
+(player x=0.20139697 y=2.662827 z=-18.589298 yaw=-0.30002695 pitch=2.999982)
+
+# === Ground ===
+(box x=0 y=-0.05 z=0 sx=80 sy=0.1 sz=80 mat='grass_01')
+
+# Spawn plaza (concrete, visually distinguishes the start area)
+(box x=0 y=0.01 z=-15 sx=24 sy=0.02 sz=10 mat='concrete_01')
+
+# Reference pole at spawn — exactly 1.8m tall, matches player eye level
+(cylinder x=-3 y=0.9 z=-15 sx=0.1 sy=1.8 sz=0.1 mat='metal_01')
+(sphere x=-3 y=1.8 z=-15 sx=0.18 sy=0.18 sz=0.18 mat='metal_02')
+
+# === Sidewalk (west of spawn plaza) — curb step-up test ===
+# Standard 0.15m city curb running along the west edge of the plaza.
+# Step west off the plaza or grass and onto the sidewalk to verify auto step-up.
+(box x=-25.7 y=0.1 z=-9.7 sx=2 sy=0.15 sz=16 mat='concrete_03')
+# Taller curb section (0.25m) — at the threshold where step-up should still work
+(box x=-25.7 y=0.1 z=2.7 sx=2 sy=0.25 sz=2 mat='concrete_03')
+
+# === Section A: Main staircase (north, center) ===
+# 15 steps, 0.2m rise × 0.3m tread, total rise 3m over 4.5m run.
+# Each step is built as a solid box from y=0 up to the step's top.
+(box x=0 y=0.1 z=0.15 sx=4 sy=0.2 sz=0.3 mat='concrete_02')
+(box x=0 y=0.2 z=0.45 sx=4 sy=0.4 sz=0.3 mat='concrete_02')
+(box x=0 y=0.3 z=0.75 sx=4 sy=0.6 sz=0.3 mat='concrete_02')
+(box x=0 y=0.4 z=1.05 sx=4 sy=0.8 sz=0.3 mat='concrete_02')
+(box x=0 y=0.5 z=1.35 sx=4 sy=1 sz=0.3 mat='concrete_02')
+(box x=0 y=0.6 z=1.65 sx=4 sy=1.2 sz=0.3 mat='concrete_02')
+(box x=0 y=0.7 z=1.95 sx=4 sy=1.4 sz=0.3 mat='concrete_02')
+(box x=0 y=0.8 z=2.25 sx=4 sy=1.6 sz=0.3 mat='concrete_02')
+(box x=0 y=0.9 z=2.55 sx=4 sy=1.8 sz=0.3 mat='concrete_02')
+(box x=0 y=1 z=2.85 sx=4 sy=2 sz=0.3 mat='concrete_02')
+(box x=0 y=1.1 z=3.15 sx=4 sy=2.2 sz=0.3 mat='concrete_02')
+(box x=0 y=1.2 z=3.45 sx=4 sy=2.4 sz=0.3 mat='concrete_02')
+(box x=0 y=1.3 z=3.75 sx=4 sy=2.6 sz=0.3 mat='concrete_02')
+(box x=0 y=1.4 z=4.05 sx=4 sy=2.8 sz=0.3 mat='concrete_02')
+(box x=0 y=1.5 z=4.35 sx=4 sy=3 sz=0.3 mat='concrete_02')
+
+# Upper platform at y=3m, flush with the top step (z=4.5 to z=14)
+(box x=0 y=2.95 z=9.25 sx=4 sy=0.1 sz=9.5 mat='floor_01')
+
+# Railings (1m tall above the platform surface)
+(box x=-2 y=3.5 z=9.25 sx=0.1 sy=1 sz=9.5 mat='wood_01')
+(box x=2 y=3.5 z=9.25 sx=0.1 sy=1 sz=9.5 mat='wood_01')
+(box x=0 y=3.5 z=14 sx=4 sy=1 sz=0.1 mat='wood_01')
+
+# Narrow gap on the upper platform — 0.8m clear (squeeze-through test)
+(box x=-1.1 y=3.5 z=11 sx=0.2 sy=1 sz=1.5 mat='brick_02')
+(box x=1.1 y=3.5 z=11 sx=0.2 sy=1 sz=1.5 mat='brick_02')
+
+# Drop ledge — mid-height platform off the side of the upper platform
+# (player walks off the railing-less east side and lands here at y=1.5m)
+(box x=4.5 y=1.55 z=8 sx=3 sy=0.1 sz=4 mat='floor_01')
+# Ramp/blockable from the ground to the drop ledge (1.5m tall step is too big)
+(box x=4.5 y=0.25 z=5.5 sx=3 sy=0.5 sz=1 mat='wood_03')
+(box x=4.5 y=0.75 z=6.5 sx=3 sy=1.5 sz=1 mat='wood_03')
+
+# === Section B: Jump-up boxes (east) ===
+# Standalone boxes of increasing height — test maximum jump height
+(box x=8 y=0.15 z=-2 sx=1 sy=0.3 sz=1 mat='crate_01')
+(box x=10 y=0.3 z=-2 sx=1 sy=0.6 sz=1 mat='crate_01')
+(box x=12 y=0.45 z=-2 sx=1 sy=0.9 sz=1 mat='crate_01')
+(box x=14 y=0.6 z=-2 sx=1 sy=1.2 sz=1 mat='crate_01')
+(box x=16 y=0.75 z=-2 sx=1 sy=1.5 sz=1 mat='crate_01')
+
+# Stepping stones with gaps — test horizontal jump distance
+(box x=8 y=0.25 z=2 sx=1 sy=0.5 sz=1 mat='crate_01')
+(box x=10 y=0.5 z=3 sx=1 sy=1 sz=1 mat='crate_01')
+(box x=12 y=0.75 z=4.5 sx=1 sy=1.5 sz=1 mat='crate_01')
+(box x=14.5 y=1 z=6 sx=1 sy=2 sz=1 mat='crate_01')
+
+# Tall stack: large box with a small target on top (test landing on small surface)
+(box x=11 y=1 z=9 sx=2 sy=2 sz=2 mat='crate_01')
+(box x=11 y=2.15 z=9 sx=0.4 sy=0.3 sz=0.4 mat='wood_03')
+
+# Pyramid stack — test climbing by jumping from box to box
+(box x=15 y=0.25 z=10 sx=3 sy=0.5 sz=3 mat='crate_01')
+(box x=15 y=0.75 z=10 sx=2 sy=1.5 sz=2 mat='crate_01')
+(box x=15 y=1.25 z=10 sx=1 sy=2.5 sz=1 mat='crate_01')
+
+# === Section C: Ramps (west, in front of spawn plaza) ===
+# Each ramp tilts 4m-long (or 3m) slab around the x-axis so the +z end is up.
+# 20° ramp — gentle, easily walkable
+(box x=-8 y=0.78 z=-3 sx=3 sy=0.2 sz=4 ra=20.000015 rx=-0.999999 ry=0 rz=0 mat='wood_01')
+# 35° ramp — moderate, edge of walkable
+(box x=-13 y=0.95 z=-3 sx=3 sy=0.2 sz=3 ra=35.000008 rx=-0.9999998 ry=0 rz=0 mat='wood_02')
+# 50° ramp — too steep, player should slide back down
+(box x=-18 y=1.02 z=-3 sx=3 sy=0.2 sz=2.5 ra=50.000008 rx=-0.99999976 ry=0 rz=0 mat='wood_04')
+
+# Small landing pad at top of the 20° ramp (≈1.4m high at z=-1)
+(box x=-8 y=1.4 z=0.5 sx=3 sy=0.1 sz=3 mat='floor_01')
+
+# === Section D: Multi-level platforms (west) ===
+# Lower level platform at y=1m, with a 5-step staircase up to it.
+(box x=-12 y=0.95 z=7 sx=5 sy=0.1 sz=4 mat='floor_01')
+# Stairs up to lower level (5 steps × 0.2m rise, south face of platform at z=5)
+(box x=-12 y=0.1 z=3.65 sx=2 sy=0.2 sz=0.3 mat='concrete_03')
+(box x=-12 y=0.2 z=3.95 sx=2 sy=0.4 sz=0.3 mat='concrete_03')
+(box x=-12 y=0.3 z=4.25 sx=2 sy=0.6 sz=0.3 mat='concrete_03')
+(box x=-12 y=0.4 z=4.55 sx=2 sy=0.8 sz=0.3 mat='concrete_03')
+(box x=-12 y=0.5 z=4.85 sx=2 sy=1 sz=0.3 mat='concrete_03')
+
+# Upper level platform at y=2.5m (offset further north and west)
+(box x=-13 y=2.45 z=12 sx=5 sy=0.1 sz=4 mat='floor_01')
+# Stairs from lower (y=1, z=9) up to upper (y=2.5, z=9.9) — 6 steps × 0.25m rise
+(box x=-12 y=0.625 z=9.15 sx=2 sy=1.25 sz=0.3 mat='concrete_03')
+(box x=-12 y=0.75 z=9.45 sx=2 sy=1.5 sz=0.3 mat='concrete_03')
+(box x=-12 y=0.875 z=9.75 sx=2 sy=1.75 sz=0.3 mat='concrete_03')
+(box x=-12 y=1 z=10.05 sx=2 sy=2 sz=0.3 mat='concrete_03')
+(box x=-12 y=1.125 z=10.35 sx=2 sy=2.25 sz=0.3 mat='concrete_03')
+(box x=-12 y=1.25 z=10.65 sx=2 sy=2.5 sz=0.3 mat='concrete_03')
+
+# Support pillar — purely visual, also a vertical obstacle for slide tests
+(cylinder x=-9 y=1.25 z=8 sx=0.4 sy=2.5 sz=0.4 mat='concrete_04')
+
+# === Section E: Pillars and corners (path between spawn and stairs) ===
+# Cylindrical pillars on either side of the main approach — slide-along test
+(cylinder x=-3 y=1 z=-7 sx=0.6 sy=2 sz=0.6 mat='concrete_04')
+(cylinder x=3 y=1 z=-7 sx=0.6 sy=2 sz=0.6 mat='concrete_04')
+
+# Inner-corner L (east) — player walks INTO the concave corner
+(box x=5.5 y=1 z=-9.9 sx=3 sy=2 sz=0.2 mat='brick_01')
+(box x=6.9 y=1 z=-8.5 sx=0.2 sy=2 sz=3 mat='brick_01')
+
+# Outer-corner L (west) — player walks AROUND the convex corner
+(box x=-5.5 y=1 z=-9.9 sx=3 sy=2 sz=0.2 mat='brick_01')
+(box x=-6.9 y=1 z=-8.5 sx=0.2 sy=2 sz=3 mat='brick_01')
+
+# Narrow gap pair (varying widths) — capsule fit test
+# 1.2m gap
+(box x=-1.5 y=1 z=-10 sx=0.4 sy=2 sz=0.4 mat='brick_03')
+(box x=1.5 y=1 z=-10 sx=0.4 sy=2 sz=0.4 mat='brick_03')
+# 0.8m gap (tighter)
+(box x=-1.3 y=1 z=-11.5 sx=0.4 sy=2 sz=0.4 mat='brick_03')
+(box x=1.3 y=1 z=-11.5 sx=0.4 sy=2 sz=0.4 mat='brick_03')
+
+# === Section F: Low ceiling tunnel (far west) ===
+# Floor, side walls, and a roof at y=1.5m — too low to stand under at full height.
+(box x=-18 y=0.02 z=2 sx=4 sy=0.04 sz=6 mat='concrete_05')
+(box x=-18 y=1.55 z=2 sx=4 sy=0.05 sz=6 mat='concrete_05')
+(box x=-20 y=0.75 z=2 sx=0.2 sy=1.5 sz=6 mat='brick_04')
+(box x=-16 y=0.75 z=2 sx=0.2 sy=1.5 sz=6 mat='brick_04')
+
+# === Section G: Small-step row (auto step-up threshold test) ===
+# Eight ledges of increasing height (0.05 → 0.40m), 0.05m increments.
+# Walk west-to-east to find where step-up snap fails.
+(box x=-3.5 y=0.025 z=-12 sx=0.9 sy=0.05 sz=0.6 mat='floor_02')
+(box x=-2.5 y=0.05 z=-12 sx=0.9 sy=0.1 sz=0.6 mat='floor_02')
+(box x=-1.5 y=0.075 z=-12 sx=0.9 sy=0.15 sz=0.6 mat='floor_02')
+(box x=-0.5 y=0.1 z=-12 sx=0.9 sy=0.2 sz=0.6 mat='floor_02')
+(box x=0.5 y=0.125 z=-12 sx=0.9 sy=0.25 sz=0.6 mat='floor_02')
+(box x=1.5 y=0.15 z=-12 sx=0.9 sy=0.3 sz=0.6 mat='floor_02')
+(box x=2.5 y=0.175 z=-12 sx=0.9 sy=0.35 sz=0.6 mat='floor_02')
+(box x=3.5 y=0.2 z=-12 sx=0.9 sy=0.4 sz=0.6 mat='floor_02')
+
+# === Section H: Pit (carved out of the ground) ===
+# A 3×3m hole, 2m deep, to test falling into a hole and climbing back out.
+(sub (box x=10 y=-1 z=-13 sx=3 sy=2 sz=3 mat='dirt_01'))
+# Stepping ledge inside the pit (climb back out using one box)
+(box x=11.4 y=-0.75 z=-13 sx=0.6 sy=0.5 sz=2 mat='wood_02')
+
+# === Section I: Overhang / head-collision test ===
+# A solid block hanging in mid-air over the spawn approach.
+# Bottom at y=1.6m — just above eye height, so a tall jump bonks the head.
+(box x=-5 y=2 z=-12 sx=3 sy=0.8 sz=2 mat='concrete_05')
