@@ -374,16 +374,6 @@ impl GPUState
         // uncaptured error handler fires promptly if the GPU timed out.
         let _ = self.device.poll(wgpu::PollType::Poll);
         let size = self.window.inner_size();
-        let pixel_size_at_1m = (2.0 / size.height as f32) / focal_length;
-
-        // Update uniforms
-        let uniforms = Uniforms {
-            time: start_time.elapsed().as_secs_f32(),
-            aspect_ratio: size.width as f32 / size.height as f32,
-            pixel_size_at_1m,
-            selected_id,
-        };
-        self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
 
         let output = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
@@ -410,6 +400,121 @@ impl GPUState
             }
         };
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        self.encode_frame(&view, size.width, size.height, start_time, focal_length, selected_id);
+        output.present();
+    }
+
+    /// Render a single frame to an offscreen texture and write it to `path` as a PNG.
+    pub fn capture_screenshot(&self, start_time: &Instant, focal_length: f32, path: &std::path::Path)
+    {
+        let size = self.window.inner_size();
+        let width = size.width;
+        let height = size.height;
+
+        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("Screenshot Texture"),
+            size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: self.config.format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        self.encode_frame(&view, width, height, start_time, focal_length, -1);
+
+        // wgpu requires bytes_per_row to be a multiple of COPY_BYTES_PER_ROW_ALIGNMENT,
+        // so we pad each row in the readback buffer and strip the padding when writing the PNG.
+        let bytes_per_pixel = 4u32;
+        let unpadded_bytes_per_row = width * bytes_per_pixel;
+        let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+        let padded_bytes_per_row = unpadded_bytes_per_row.div_ceil(align) * align;
+
+        let readback = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Screenshot Readback"),
+            size: (padded_bytes_per_row * height) as u64,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Screenshot Copy Encoder"),
+        });
+        encoder.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyBufferInfo {
+                buffer: &readback,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(padded_bytes_per_row),
+                    rows_per_image: Some(height),
+                },
+            },
+            wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+        );
+        self.queue.submit(std::iter::once(encoder.finish()));
+
+        let slice = readback.slice(..);
+        slice.map_async(wgpu::MapMode::Read, |_| {});
+        let _ = self.device.poll(wgpu::PollType::wait_indefinitely());
+
+        let padded = slice.get_mapped_range();
+        let bgra = matches!(
+            self.config.format,
+            wgpu::TextureFormat::Bgra8UnormSrgb | wgpu::TextureFormat::Bgra8Unorm
+        );
+        let mut rgba = Vec::with_capacity((width * height * 4) as usize);
+        for row in 0..height {
+            let row_start = (row * padded_bytes_per_row) as usize;
+            for col in 0..width {
+                let i = row_start + (col * 4) as usize;
+                if bgra {
+                    rgba.extend_from_slice(&[padded[i + 2], padded[i + 1], padded[i], padded[i + 3]]);
+                } else {
+                    rgba.extend_from_slice(&padded[i..i + 4]);
+                }
+            }
+        }
+        drop(padded);
+        readback.unmap();
+
+        let file = std::fs::File::create(path).expect("failed to create screenshot file");
+        let writer = std::io::BufWriter::new(file);
+        let mut png_encoder = png::Encoder::new(writer, width, height);
+        png_encoder.set_color(png::ColorType::Rgba);
+        png_encoder.set_depth(png::BitDepth::Eight);
+        let mut png_writer = png_encoder.write_header().expect("failed to write PNG header");
+        png_writer.write_image_data(&rgba).expect("failed to write PNG data");
+
+        println!("Saved screenshot: {}", path.display());
+    }
+
+    fn encode_frame(
+        &self,
+        view: &wgpu::TextureView,
+        width: u32,
+        height: u32,
+        start_time: &Instant,
+        focal_length: f32,
+        selected_id: i32,
+    ) {
+        let pixel_size_at_1m = (2.0 / height as f32) / focal_length;
+        let uniforms = Uniforms {
+            time: start_time.elapsed().as_secs_f32(),
+            aspect_ratio: width as f32 / height as f32,
+            pixel_size_at_1m,
+            selected_id,
+        };
+        self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
@@ -417,7 +522,7 @@ impl GPUState
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &view,
+                view,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -444,6 +549,5 @@ impl GPUState
         drop(render_pass);
 
         self.queue.submit(std::iter::once(encoder.finish()));
-        output.present();
     }
 }

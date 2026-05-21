@@ -71,11 +71,14 @@ struct App
     /// Map file to load, also used for Ctrl+R hot-reload and Ctrl+S save.
     /// Defaults to "untitled.map" when no map argument was provided.
     map_file: PathBuf,
+
+    /// If set, render one frame to this path as PNG, then exit.
+    screenshot_path: Option<PathBuf>,
 }
 
 impl App
 {
-    fn new(map_file: Option<PathBuf>) -> Self
+    fn new(map_file: Option<PathBuf>, screenshot_path: Option<PathBuf>) -> Self
     {
         let now = Instant::now();
 
@@ -101,6 +104,7 @@ impl App
             drag_remainder: Vec3::new(0.0, 0.0, 0.0),
             pending_recenter: false,
             map_file,
+            screenshot_path,
         };
 
         if load_from_arg {
@@ -505,24 +509,29 @@ impl ApplicationHandler for App
             return;
         }
 
+        let screenshot_mode = self.screenshot_path.is_some();
+
         let window = Arc::new(
             event_loop
                 .create_window(
                     Window::default_attributes()
                         .with_title("TinkerField")
                         .with_inner_size(LogicalSize::new(800.0, 600.0))
-                        .with_resizable(false),
+                        .with_resizable(false)
+                        .with_visible(!screenshot_mode),
                 )
                 .unwrap(),
         );
 
-        // Center, hide, and grab the cursor now. Safe to do directly here since no
-        // title bar drag is in progress at window creation time.
-        let size = window.inner_size();
-        let _ = window.set_cursor_position(winit::dpi::PhysicalPosition::new(size.width / 2, size.height / 2));
-        let _ = window.set_cursor_grab(CursorGrabMode::Locked)
-            .or_else(|_| window.set_cursor_grab(CursorGrabMode::Confined));
-        window.set_cursor_visible(false);
+        if !screenshot_mode {
+            // Center, hide, and grab the cursor now. Safe to do directly here since no
+            // title bar drag is in progress at window creation time.
+            let size = window.inner_size();
+            let _ = window.set_cursor_position(winit::dpi::PhysicalPosition::new(size.width / 2, size.height / 2));
+            let _ = window.set_cursor_grab(CursorGrabMode::Locked)
+                .or_else(|_| window.set_cursor_grab(CursorGrabMode::Confined));
+            window.set_cursor_visible(false);
+        }
 
         let gpu_state = pollster::block_on(gpu::GPUState::new(Arc::clone(&window), &self.materials));
 
@@ -531,6 +540,12 @@ impl ApplicationHandler for App
         self.world.upload_player(&gpu_state.queue, &gpu_state.gpu_world);
 
         self.gpu_state = Some(gpu_state);
+
+        if let Some(path) = self.screenshot_path.take() {
+            let gpu_state = self.gpu_state.as_ref().unwrap();
+            gpu_state.capture_screenshot(&self.start_time, self.world.player.focal_length, &path);
+            event_loop.exit();
+        }
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent)
@@ -651,9 +666,20 @@ impl ApplicationHandler for App
 
 fn main()
 {
-    let map_file = std::env::args().nth(1).map(PathBuf::from);
+    let mut map_file = None;
+    let mut screenshot_path = None;
+    let mut args = std::env::args().skip(1);
+    while let Some(arg) = args.next() {
+        if arg == "--screenshot" {
+            screenshot_path = Some(PathBuf::from(
+                args.next().expect("--screenshot requires a filename"),
+            ));
+        } else {
+            map_file = Some(PathBuf::from(arg));
+        }
+    }
 
     let event_loop = EventLoop::new().unwrap();
-    let mut app = App::new(map_file);
+    let mut app = App::new(map_file, screenshot_path);
     event_loop.run_app(&mut app).unwrap();
 }
