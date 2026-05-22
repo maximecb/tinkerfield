@@ -74,11 +74,18 @@ struct App
 
     /// If set, render one frame to this path as PNG, then exit.
     screenshot_path: Option<PathBuf>,
+
+    /// Render resolution in pixels. The window is sized to these dimensions
+    /// in *logical* units, so on high-DPI displays the surface is rendered
+    /// at this resolution and the compositor scales it up to fill the window.
+    /// Screenshots are written at this resolution exactly.
+    width: u32,
+    height: u32,
 }
 
 impl App
 {
-    fn new(map_file: Option<PathBuf>, screenshot_path: Option<PathBuf>) -> Self
+    fn new(map_file: Option<PathBuf>, screenshot_path: Option<PathBuf>, width: u32, height: u32) -> Self
     {
         let now = Instant::now();
 
@@ -105,6 +112,8 @@ impl App
             pending_recenter: false,
             map_file,
             screenshot_path,
+            width,
+            height,
         };
 
         if load_from_arg {
@@ -516,7 +525,7 @@ impl ApplicationHandler for App
                 .create_window(
                     Window::default_attributes()
                         .with_title("TinkerField")
-                        .with_inner_size(LogicalSize::new(800.0, 600.0))
+                        .with_inner_size(LogicalSize::new(self.width as f64, self.height as f64))
                         .with_resizable(false)
                         .with_visible(!screenshot_mode),
                 )
@@ -533,7 +542,12 @@ impl ApplicationHandler for App
             window.set_cursor_visible(false);
         }
 
-        let gpu_state = pollster::block_on(gpu::GPUState::new(Arc::clone(&window), &self.materials));
+        let gpu_state = pollster::block_on(gpu::GPUState::new(
+            Arc::clone(&window),
+            self.width,
+            self.height,
+            &self.materials,
+        ));
 
         // Perform initial upload
         self.world.upload_world(&gpu_state.queue, &gpu_state.gpu_world);
@@ -668,18 +682,26 @@ fn main()
 {
     let mut map_file = None;
     let mut screenshot_path = None;
+    let mut width: u32 = 800;
+    let mut height: u32 = 600;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         if arg == "--screenshot" {
             screenshot_path = Some(PathBuf::from(
                 args.next().expect("--screenshot requires a filename"),
             ));
+        } else if arg == "--width" {
+            width = args.next().expect("--width requires a value")
+                .parse().expect("--width must be a positive integer");
+        } else if arg == "--height" {
+            height = args.next().expect("--height requires a value")
+                .parse().expect("--height must be a positive integer");
         } else {
             map_file = Some(PathBuf::from(arg));
         }
     }
 
     let event_loop = EventLoop::new().unwrap();
-    let mut app = App::new(map_file, screenshot_path);
+    let mut app = App::new(map_file, screenshot_path, width, height);
     event_loop.run_app(&mut app).unwrap();
 }

@@ -186,7 +186,7 @@ pub struct GPUState
 
 impl GPUState
 {
-    pub async fn new(window: Arc<Window>, materials: &MaterialRegistry) -> Self
+    pub async fn new(window: Arc<Window>, width: u32, height: u32, materials: &MaterialRegistry) -> Self
     {
         let instance = wgpu::Instance::default();
         let surface = instance.create_surface(Arc::clone(&window)).unwrap();
@@ -233,8 +233,8 @@ impl GPUState
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
-            width: 800,
-            height: 600,
+            width,
+            height,
             present_mode,
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
@@ -373,7 +373,6 @@ impl GPUState
         // Flush any pending GPU errors from the previous frame so the
         // uncaptured error handler fires promptly if the GPU timed out.
         let _ = self.device.poll(wgpu::PollType::Poll);
-        let size = self.window.inner_size();
 
         let output = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
@@ -401,16 +400,15 @@ impl GPUState
         };
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        self.encode_frame(&view, size.width, size.height, start_time, focal_length, selected_id);
+        self.encode_frame(&view, self.config.width, self.config.height, start_time, focal_length, selected_id);
         output.present();
     }
 
     /// Render a single frame to an offscreen texture and write it to `path` as a PNG.
     pub fn capture_screenshot(&self, start_time: &Instant, focal_length: f32, path: &std::path::Path)
     {
-        let size = self.window.inner_size();
-        let width = size.width;
-        let height = size.height;
+        let width = self.config.width;
+        let height = self.config.height;
 
         let texture = self.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Screenshot Texture"),
