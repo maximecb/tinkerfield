@@ -29,6 +29,19 @@ cargo run --release maps/city.map
 
 Several example maps are provided in the `/maps` directory (`city.map`, `house.map`, `nature.map`).
 
+### Command-Line Options
+
+- `--width <pixels>`: Set the window width (default: 800).
+- `--height <pixels>`: Set the window height (default: 600).
+- `--screenshot <path>`: Render a single frame, save it as a PNG to the given
+  path, and exit. Can be used as a tool for agents.
+
+For example, to render a 1920x1080 screenshot of a map:
+
+```
+cargo run --release -- maps/city.map --width 1920 --height 1080 --screenshot city.png
+```
+
 ## Controls
 
 ### Player Movement
